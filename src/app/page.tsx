@@ -1,10 +1,10 @@
-import Image from "next/image";
+import NewJobForm from "@/components/task/NewJobForm";
 
-export default function Home() {
+export default function Page() {
   return (
-    <main style={{ maxWidth: 720, margin: "48px auto", padding: 16 }}>
-      <h1>Tasks</h1>
-      <p>Welcome. Go to /tasks to manage items.</p>
+    <main className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Job Tracker</h1>
+      <NewJobForm />
     </main>
   );
 }
