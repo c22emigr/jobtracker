@@ -23,7 +23,6 @@ export default function NewJobForm() {
 
         if (res.ok) {
         setRole(""); setCompany(""); setLocation(""); setNote("");
-        alert("Job added");
         } else {
         alert(`Error: ${data?.error ?? res.statusText} ${data?.code ?? ""}`);
         }
