@@ -19,3 +19,14 @@ export interface TodoItem {
   createdAt: string;
   updatedAt: string;
 }
+
+export type Job = {
+  _id: string;
+  role: string;
+  company: string;
+  location?: string;
+  note?: string;
+  status: "applied" | "interview" | "rejected";
+  createdAt: string;
+  updatedAt: string;
+};

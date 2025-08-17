@@ -50,28 +50,24 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  const _id = parseObjectId(params.id);
-  if (!_id) {
-    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
-  }
 
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
+    const { id } = params;
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+
     const db = await getDb();
-    const col = db.collection("jobs");
+    const res = await db.collection("jobs").deleteOne({ _id: new ObjectId(id) });
 
-    const result = await col.findOneAndDelete({ _id });
-
-    if (!result || !result.value) {
+    if (res.deletedCount === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ ok: true, data: result.value }, { status: 200 });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: true }, { status: 200 }); // 🔥 simpler: always return JSON
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message ?? "Bad request" }, { status: 500 });
   }
 }

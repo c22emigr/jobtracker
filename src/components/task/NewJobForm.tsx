@@ -1,7 +1,8 @@
 "use client";
+
 import { useState } from "react";
 
-export default function NewJobForm() {
+export default function NewJobForm({ onJobCreated }: { onJobCreated: (job: any) => void }) {
     const [role, setRole] = useState("");
     const [company, setCompany] = useState("");
     const [location, setLocation] = useState("");
@@ -12,20 +13,25 @@ export default function NewJobForm() {
         e.preventDefault();
         setLoading(true);
 
-        const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, company, location, note }),
+        try {
+          const res = await fetch("/api/jobs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role, company, location, note }),
         });
 
         let data: any = null;
         try { data = await res.json(); } catch {}
 
         if (res.ok) {
-        setRole(""); setCompany(""); setLocation(""); setNote("");
+          onJobCreated(data); // Push to state
+          setRole(""); setCompany(""); setLocation(""); setNote("");
         } else {
-        alert(`Error: ${data?.error ?? res.statusText} ${data?.code ?? ""}`);
+          alert(`Error: ${data?.error ?? res.statusText} ${data?.code ?? ""}`);
         }
+      } finally {
+        setLoading(false); // reset after completion
+      }
     }
 
     return (

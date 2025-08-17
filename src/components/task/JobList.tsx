@@ -1,46 +1,40 @@
 "use client";
-import { useEffect, useState } from "react";
 
-type Job = {
-  _id: string;
-  role: string;
-  company: string;
-  location?: string;
-  note?: string;
-  status: 'applied'|'interview'|'rejected';
-  createdAt: string;
-  updatedAt: string;
-};
+import { Job } from "@/lib/types";
 
-export default function JobList() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  async function load() {
-    setLoading(true);
-    const res = await fetch('/api/jobs');
-    const data = await res.json();
-    setJobs(data);
-    setLoading(false);
-  }
-
-  useEffect(() => { load(); }, []);
-
-  async function updateStatus(id: string, status: Job['status']) {
+export default function JobList({
+  jobs,
+  setJobs,
+  loading,
+}: {
+  jobs: Job[];
+  setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
+  loading: boolean;
+}) {
+  async function updateStatus(id: string, status: Job["status"]) {
     const res = await fetch(`/api/jobs/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    if (res.ok) load(); else alert('Failed to update');
+    if (res.ok) {
+      setJobs(prev =>
+        prev.map(j => (j._id === id ? { ...j, status } : j))
+      );
+    } else alert("Failed to update");
   }
 
-  async function remove(id: string) {
-    if (!confirm('Delete this item?')) return;
-    const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
-    if (res.ok) setJobs(jobs => jobs.filter(j => j._id !== id));
-    else alert('Failed to delete');
+async function remove(id: string) {
+  const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
+
+  if (res.ok) {
+    setJobs(prev => prev.filter(j => j._id !== id));
+  } else {
+    const err = await res.json().catch(() => ({}));
+    alert(`Failed to delete: ${err.error ?? res.statusText}`);
   }
+}
 
   if (loading) return <div>Loading…</div>;
   if (!jobs.length) return <div>No jobs yet.</div>;
