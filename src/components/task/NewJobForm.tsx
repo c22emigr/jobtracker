@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function NewJobForm({ onJobCreated }: { onJobCreated: (job: any) => void }) {
     const [role, setRole] = useState("");

@@ -33,17 +33,17 @@ export async function PATCH(
     const db = await getDb();
     const col = db.collection("jobs");
 
-    const result = await col.findOneAndUpdate(
-      { _id },
-      { $set: { status: parsed.data, updatedAt: new Date().toISOString() } },
-      { returnDocument: "after" }
-    );
+  const result = await col.findOneAndUpdate(
+    { _id },
+    { $set: { status: parsed.data, updatedAt: new Date().toISOString() } },
+    { returnDocument: "after" }
+  );
 
-    if (!result || !result.value) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+  if (!result) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
-    return NextResponse.json({ ok: true, data: result.value }, { status: 200 });
+  return NextResponse.json({ ok: true, data: result }, { status: 200 });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
