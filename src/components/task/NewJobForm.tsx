@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function NewJobForm({ onJobCreated }: { onJobCreated: (job: any) => void }) {
     const [role, setRole] = useState("");
@@ -8,6 +8,13 @@ export default function NewJobForm({ onJobCreated }: { onJobCreated: (job: any) 
     const [location, setLocation] = useState("");
     const [note, setNote] = useState("");
     const [loading, setLoading] = useState(false);
+
+    const roleRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      roleRef.current?.focus();  // For refocus after entry
+    }, []);
+
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -26,6 +33,7 @@ export default function NewJobForm({ onJobCreated }: { onJobCreated: (job: any) 
         if (res.ok) {
           onJobCreated(data); // Push to state
           setRole(""); setCompany(""); setLocation(""); setNote("");
+          roleRef.current?.focus(); // Re-focus after job entry
         } else {
           alert(`Error: ${data?.error ?? res.statusText} ${data?.code ?? ""}`);
         }
@@ -37,6 +45,7 @@ export default function NewJobForm({ onJobCreated }: { onJobCreated: (job: any) 
     return (
      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "300px" }}>
       <input
+        ref={roleRef}
         type="text"
         placeholder="Role"
         value={role}
