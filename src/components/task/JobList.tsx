@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Job } from "@/lib/types";
+
+type SortKey = "status" | "company" | "createdAt";
+type SortDir = "asc" | "desc";
+
+const STATUS_ORDER: Record<Job["status"], number> = { // Define order for status
+  applied: 0,
+  interview: 1,
+  rejected: 2,
+};
 
 
 export default function JobList({
@@ -13,16 +22,46 @@ export default function JobList({
       setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
       loading: boolean;
     }) {
+
+  // Keyboard nav state
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  // Sorting state
+  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  const [sortDir, setSortDir] =useState<SortDir>("desc");
+
+  // For refocus
   const listRef = useRef<Array<HTMLLIElement | null>>([]);
   const listEl = useRef<HTMLUListElement | null>(null); // Focus UL container
 
-  
+  // Focus UL list container
   useEffect(() => {
-    listEl.current?.focus();    // focus the list container
+    listEl.current?.focus();
   }, []);
 
+  // Sorted array of jobs after sorting
+  const sortedJobs = useMemo(() => {
+    const arr = [...jobs];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "status") {
+        cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      } else if (sortKey === "company") {
+        cmp = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
+      } else {
+        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [jobs, sortKey, sortDir]);
 
+  // Reset selection after sort changes
+  useEffect(() => {
+    setActiveIndex(null);
+  }, [sortKey, sortDir, jobs.length]);
+
+  // Updates backend
   async function updateStatus(id: string, status: Job["status"]) {
     const res = await fetch(`/api/jobs/${id}`, {
       method: "PATCH",
@@ -36,22 +75,23 @@ export default function JobList({
     } else alert("Failed to update");
   }
 
-async function remove(id: string) {
-  const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
-  if (res.ok) {
-    setJobs(prev => prev.filter(j => j._id !== id));
-    setActiveIndex(prev => {
-      if (prev === null) return null;
-      const newLen = jobs.length - 1;         // length after removal
-      return newLen <= 0 ? null : Math.min(prev, newLen - 1);
-    });
-  } else {
-    const err = await res.json().catch(() => ({}));
-    alert(`Failed to delete: ${err.error ?? res.statusText}`);
-  }
+  // Updates backend
+  async function remove(id: string) {
+    const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setJobs(prev => prev.filter(j => j._id !== id));
+      setActiveIndex(prev => {
+        if (prev === null) return null;
+        const newLen = jobs.length - 1;         // length after removal
+        return newLen <= 0 ? null : Math.min(prev, newLen - 1);
+      });
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(`Failed to delete: ${err.error ?? res.statusText}`);
+    }
 }
 
-  // handle arrow keys + enter
+  // keyboard nav
   function onListKeyDown(e: React.KeyboardEvent<HTMLUListElement>) {
     if (!jobs.length) return;
     const tag = (e.target as HTMLElement).tagName.toUpperCase();
@@ -73,40 +113,84 @@ async function remove(id: string) {
     }
   }, [activeIndex]);
 
+  // Render
   if (loading) return <div>Loading…</div>;
   if (!jobs.length) return <div>No jobs yet.</div>;
 
-  return (
+
+return (
+  <div>
+    <div className="flex items-center gap-2 mb-2">
+      <label className="text-sm text-gray-500">Sort by</label>
+      <select
+        value={sortKey}
+        onChange={e => setSortKey(e.target.value as SortKey)}
+        className="border rounded px-2 py-1 text-sm"
+      >
+        <option value="createdAt">Created</option>
+        <option value="status">Status</option>
+        <option value="company">Company</option>
+      </select>
+      <button
+        onClick={() => setSortDir(d => (d === "asc" ? "desc" : "asc"))}
+        className="border rounded px-2 py-1 text-sm"
+      >
+        {sortDir === "asc" ? "Asc ↑" : "Desc ↓"}
+      </button>
+    </div>
+
     <ul
       ref={listEl}
-      tabIndex={0}                       // container can receive key events
+      tabIndex={0} // Keyboard events for ul
       className="flex flex-col gap-3 outline-none"
       onKeyDown={onListKeyDown}
     >
-      {jobs.map((job, index) => (
+      {sortedJobs.map((job, index) => (
         <li
           key={job._id}
-          ref={(el: HTMLLIElement | null) => { listRef.current[index] = el; }}
+          ref={(el: HTMLLIElement | null) => {
+            listRef.current[index] = el;
+          }}
           tabIndex={0}
-          onClick={() => setActiveIndex(index)} // Mouse click focus
-          className={`border rounded p-3 outline-none ${index === activeIndex ? "ring-2 ring-blue-500" : ""}`}
+          onClick={() => setActiveIndex(index)} // Mouse click to focus li 
+          className={`border rounded p-3 outline-none ${
+            index === activeIndex ? "ring-2 ring-blue-500" : ""
+          }`}
         >
           <div className="flex justify-between items-center">
             <div>
-              <div className="font-medium">{job.role} · {job.company}</div>
+              <div className="font-medium">
+                {job.role} · {job.company}
+              </div>
               <div className="text-sm text-gray-600">
-                {job.location ?? '—'} • {job.status}
+                {job.location ?? "—"} • {job.status}
               </div>
               {job.note && <div className="text-sm mt-1">{job.note}</div>}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => updateStatus(job._id, 'rejected')} className="px-2 py-1 border rounded">Reject</button>
-              <button onClick={() => updateStatus(job._id, 'interview')} className="px-2 py-1 border rounded">Interview</button>
-              <button onClick={() => remove(job._id)} className="px-2 py-1 border rounded text-red-600">Delete</button>
+              <button
+                onClick={() => updateStatus(job._id, "rejected")}
+                className="px-2 py-1 border rounded"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => updateStatus(job._id, "interview")}
+                className="px-2 py-1 border rounded"
+              >
+                Interview
+              </button>
+              <button
+                onClick={() => remove(job._id)}
+                className="px-2 py-1 border rounded text-red-600"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </li>
       ))}
     </ul>
-  ); 
+  </div>
+);
 }
