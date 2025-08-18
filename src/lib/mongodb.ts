@@ -1,18 +1,50 @@
-import mongoose from "mongoose";
+import { MongoClient, Db, Collection, Document } from "mongodb";
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
+declare global {
+  // for hot-reload in dev
+  // eslint-disable-next-line no-var
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
+}
 
-if (!MONGODB_URI) throw new Error("Missing MONGODB_URI");
+const uri = process.env.MONGODB_URI;
+const defaultDb = process.env.MONGODB_DB; // optional but handy
 
-let cached = (global as any).mongoose as { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null } | undefined;
+console.log(
+  'MONGODB_URI present?', Boolean(process.env.MONGODB_URI),
+  ' MONGODB_DB:', process.env.MONGODB_DB
+);
 
-if (!cached) cached = (global as any).mongoose = { conn: null, promise: null };
+if (!uri) {
+  throw new Error("MONGODB_URI is not set in environment variables");
+}
 
-export async function connectDB() {
-  if (cached!.conn) return cached!.conn;
-  if (!cached!.promise) {
-    cached!.promise = mongoose.connect(MONGODB_URI, { dbName: "app" });
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
+
+if (process.env.NODE_ENV === "development") {
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri);
+    global._mongoClientPromise = client.connect();
   }
-  cached!.conn = await cached!.promise;
-  return cached!.conn;
+  clientPromise = global._mongoClientPromise!;
+} else {
+  client = new MongoClient(uri);
+  clientPromise = client.connect();
+}
+
+export async function getClient(): Promise<MongoClient> {
+  return clientPromise;
+}
+
+export async function getDb(name = defaultDb): Promise<Db> {
+  const c = await getClient();
+  return c.db(name);
+}
+
+export async function getCollection<T extends Document = Document>(
+  name: string,
+  dbName = defaultDb
+): Promise<Collection<T>> {
+  const db = await getDb(dbName);
+  return db.collection<T>(name);
 }
