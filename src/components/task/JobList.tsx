@@ -30,6 +30,9 @@ export default function JobList({
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] =useState<SortDir>("desc");
 
+  // Search state
+  const [query, setQuery] = useState("");
+
   // For refocus
   const listRef = useRef<Array<HTMLLIElement | null>>([]);
   const listEl = useRef<HTMLUListElement | null>(null); // Focus UL container
@@ -55,6 +58,17 @@ export default function JobList({
     });
     return arr;
   }, [jobs, sortKey, sortDir]);
+
+  // Search company, role, location
+  const filteredJobs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sortedJobs;
+    return sortedJobs.filter(j =>
+      j.company.toLowerCase().includes(q) ||
+      j.role.toLowerCase().includes(q) ||
+      (j.location ?? "").toLowerCase().includes(q)
+    );
+  }, [sortedJobs, query]);
 
   // Reset selection after sort changes
   useEffect(() => {
@@ -82,7 +96,7 @@ export default function JobList({
       setJobs(prev => prev.filter(j => j._id !== id));
       setActiveIndex(prev => {
         if (prev === null) return null;
-        const newLen = jobs.length - 1;         // length after removal
+        const newLen = filteredJobs.length - 1;         // length after removal
         return newLen <= 0 ? null : Math.min(prev, newLen - 1);
       });
     } else {
@@ -137,6 +151,12 @@ return (
       >
         {sortDir === "asc" ? "Asc ↑" : "Desc ↓"}
       </button>
+      <input
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Filter by company/role…"
+        className="border rounded px-2 py-1 text-sm ml-auto"
+      />
     </div>
 
     <ul
@@ -145,7 +165,7 @@ return (
       className="flex flex-col gap-3 outline-none"
       onKeyDown={onListKeyDown}
     >
-      {sortedJobs.map((job, index) => (
+      {filteredJobs.map((job, index) => (
         <li
           key={job._id}
           ref={(el: HTMLLIElement | null) => {
