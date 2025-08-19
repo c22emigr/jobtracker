@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Job } from "@/lib/types";
 import { toggleFavorite } from "@/utils/toogleFavorite";
 
-type SortKey = "status" | "company" | "createdAt";
+type SortKey = "status" | "company" | "createdAt" | "favorite";
 type SortDir = "asc" | "desc";
 
 const STATUS_ORDER: Record<Job["status"], number> = { // Define order for status
@@ -29,7 +29,8 @@ export default function JobList({
 
   // Sorting state
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
-  const [sortDir, setSortDir] =useState<SortDir>("desc");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [onlyFav, setOnlyFav] = useState(false);
 
   // Search state
   const [query, setQuery] = useState("");
@@ -43,22 +44,34 @@ export default function JobList({
     listEl.current?.focus();
   }, []);
 
+
   // Sorted array of jobs after sorting
   const sortedJobs = useMemo(() => {
-    const arr = [...jobs];
-    arr.sort((a, b) => {
+    // filter first (if needed), then copy to sort
+    const base = onlyFav ? jobs.filter(j => j.favorite) : jobs.slice();
+
+    base.sort((a, b) => {
       let cmp = 0;
-      if (sortKey === "status") {
+      if (sortKey === "favorite") {
+        cmp = (a.favorite ? 1 : 0) - (b.favorite ? 1 : 0);
+      } else if (sortKey === "status") {
         cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       } else if (sortKey === "company") {
         cmp = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
       } else {
         cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       }
+        if (cmp === 0) {
+        // tie-breaker to sort between favorites
+        const t1 = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
+        if (t1) cmp = t1;
+        else cmp = a._id.localeCompare(b._id);
+      }
       return sortDir === "asc" ? cmp : -cmp;
     });
-    return arr;
-  }, [jobs, sortKey, sortDir]);
+
+    return base;
+}, [jobs, sortKey, sortDir, onlyFav]);
 
   // Search company, role, location
   const filteredJobs = useMemo(() => {
@@ -145,6 +158,7 @@ return (
         <option value="createdAt">Created</option>
         <option value="status">Status</option>
         <option value="company">Company</option>
+        <option value="favorite">Favorite</option>
       </select>
       <button
         onClick={() => setSortDir(d => (d === "asc" ? "desc" : "asc"))}
