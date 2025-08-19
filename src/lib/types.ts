@@ -29,4 +29,5 @@ export type Job = {
   status: "applied" | "interview" | "rejected";
   createdAt: string;
   updatedAt: string;
+  favorite: boolean;
 };
