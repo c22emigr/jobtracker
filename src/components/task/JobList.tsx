@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Job } from "@/lib/types";
+import { toggleFavorite } from "@/utils/toogleFavorite";
 
 type SortKey = "status" | "company" | "createdAt";
 type SortDir = "asc" | "desc";
@@ -205,6 +206,13 @@ return (
                 className="px-2 py-1 border rounded text-red-600"
               >
                 Delete
+              </button>
+              <button
+                onClick={() => toggleFavorite({ id: job._id, next: !job.favorite, setJobs })}
+                className={`px-2 py-1 border rounded ${job.favorite ? "bg-yellow-400" : ""}`}
+                title="Toggle favorite"
+              >
+                {job.favorite ? "★" : "☆"}
               </button>
             </div>
           </div>
