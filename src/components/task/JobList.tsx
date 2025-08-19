@@ -32,6 +32,9 @@ export default function JobList({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [onlyFav, setOnlyFav] = useState(false);
 
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<Job["status"] | "all">("all");
+
   // Search state
   const [query, setQuery] = useState("");
 
@@ -74,15 +77,25 @@ export default function JobList({
 }, [jobs, sortKey, sortDir, onlyFav]);
 
   // Search company, role, location
-  const filteredJobs = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return sortedJobs;
-    return sortedJobs.filter(j =>
-      j.company.toLowerCase().includes(q) ||
-      j.role.toLowerCase().includes(q) ||
-      (j.location ?? "").toLowerCase().includes(q)
-    );
-  }, [sortedJobs, query]);
+const filteredJobs = useMemo(() => {
+  const q = query.trim().toLowerCase();
+
+  return sortedJobs.filter(j => {
+    // status filter
+    if (statusFilter !== "all" && j.status !== statusFilter) return false;
+
+    // search filter
+    if (q) {
+      return (
+        j.company.toLowerCase().includes(q) ||
+        j.role.toLowerCase().includes(q) ||
+        (j.location ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    return true;
+  });
+}, [sortedJobs, query, statusFilter]);
 
   // Reset selection after sort changes
   useEffect(() => {
@@ -166,6 +179,16 @@ return (
       >
         {sortDir === "asc" ? "Asc ↑" : "Desc ↓"}
       </button>
+      <select
+        value={statusFilter}
+        onChange={e => setStatusFilter(e.target.value as any)}
+        className="border rounded px-2 py-1 text-sm"
+      >
+        <option value="all">All</option>
+        <option value="applied">Applied</option>
+        <option value="interview">Interview</option>
+        <option value="rejected">Rejected</option>
+      </select>
       <input
         value={query}
         onChange={e => setQuery(e.target.value)}
