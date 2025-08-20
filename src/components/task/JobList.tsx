@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Job } from "@/lib/types";
 import { toggleFavorite } from "@/utils/toogleFavorite";
+import EditJobModal from "@/components/ui/EditJobModal";
 
 type SortKey = "status" | "company" | "createdAt" | "favorite";
 type SortDir = "asc" | "desc";
@@ -13,7 +14,6 @@ const STATUS_ORDER: Record<Job["status"], number> = { // Define order for status
   rejected: 2,
 };
 
-
 export default function JobList({
   jobs,
   setJobs,
@@ -23,6 +23,19 @@ export default function JobList({
       setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
       loading: boolean;
     }) {
+
+  // editJobModal:
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+
+  function openEdit(job: Job) {
+    setEditingJob(job);
+    setEditOpen(true);
+  }
+  function closeEdit() {
+    setEditOpen(false);
+    setEditingJob(null);
+  }
 
   // Keyboard nav state
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -189,6 +202,9 @@ return (
         <option value="interview">Interview</option>
         <option value="rejected">Rejected</option>
       </select>
+      <span className="text-sm text-gray-600 ml-2">
+        {filteredJobs.length} job{filteredJobs.length !== 1 && "s"}
+      </span>
       <input
         value={query}
         onChange={e => setQuery(e.target.value)}
@@ -251,11 +267,28 @@ return (
               >
                 {job.favorite ? "★" : "☆"}
               </button>
+              <button
+                onClick={() => openEdit(job)}
+                className="px-2 py-1 border rounded text-blue-600"
+              >
+                Edit
+              </button>
             </div>
           </div>
         </li>
       ))}
     </ul>
+
+        {/* Edit Modal */}
+    {editingJob && (
+      <EditJobModal
+        open={editOpen}
+        onClose={closeEdit}
+        job={editingJob}
+        setJobs={setJobs}
+      />
+    )}
+
   </div>
 );
 }

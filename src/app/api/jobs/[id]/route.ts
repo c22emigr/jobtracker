@@ -1,71 +1,99 @@
-// API called with job id
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { z } from "zod";
 import { JobStatusSchema } from '@/lib/schemas';
 
-function oid(id: string) {
+// Helper for consistent data
+function jsonOk<T>(data: T, init?: ResponseInit) {
+  return NextResponse.json({ ok: true, data }, { status: 200, ...init });
+}
+function jsonError(error: string, status = 400, details?: unknown) {
+  return NextResponse.json(
+    details ? { ok: false, error, details } : { ok: false, error },
+    { status }
+  );
+}
+
+function oid(id: string) { // Validate oid
   return ObjectId.isValid(id) ? new ObjectId(id) : null;
 }
 
-// Partial updates to jobs
-const JobUpdateSchema = z.object({
-  status: JobStatusSchema.optional(),
-  favorite: z.boolean().optional(),
-  tags: z.array(z.string().min(1).max(30).trim()).optional(),
-}).refine(obj => Object.keys(obj).length > 0, { message: "No fields to update" });
+// Partial updates to jobs through edit
+const JobUpdateSchema = z
+  .object({
+    role: z.string().min(2).optional(),
+    company: z.string().min(2).optional(),
+    location: z.string().optional(),
+    note: z.string().optional(),
+    status: JobStatusSchema.optional(),
+    favorite: z.boolean().optional(),
+  })
+  .strict()
+  .refine(obj => Object.keys(obj).length > 0, { message: "Empty body" });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const _id = oid(params.id);
-  if (!_id) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { id } = await ctx.params;
+  const _id = oid(id);
+  if (!_id) return jsonError("Invalid id", 400);
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return jsonError("Invalid JSON", 400);
   }
 
   const parsed = JobUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+    const errs = parsed.error.flatten();
+    return jsonError("Invalid payload", 422, errs);
   }
 
-  const $set = { ...parsed.data, updatedAt: new Date().toISOString() };
+  // store as Date for proper sorting and indexing
+  const $set = { ...parsed.data, updatedAt: new Date() };
 
   try {
     const db = await getDb();
     const col = db.collection("jobs");
 
-    const result = await col.findOneAndUpdate(
+    const doc = await col.findOneAndUpdate(
       { _id },
       { $set },
-      { returnDocument: "after" } // get the updated doc back
+      { returnDocument: "after" }
     );
 
-    // Handle both driver shapes safely
-    const doc = (result as any)?.value ?? result;
-    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    return NextResponse.json({ ok: true, data: doc }, { status: 200 });
+    if (!doc) return jsonError("Not found", 404);
+    return jsonOk(doc);
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return jsonError("Server error", 500);
   }
 }
 
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const _id = oid(params.id);
-  if (!_id) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { id } = await ctx.params;
+  const _id = oid(id);
+  if (!_id) return jsonError("Invalid id", 400);
 
   try {
     const db = await getDb();
-    const res = await db.collection("jobs").deleteOne({ _id });
-    if (!res.deletedCount) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ ok: true }, { status: 200 });
+    const col = db.collection("jobs");
+
+    // return the deleted doc for consistent envelope and better UX
+    const doc = await col.findOneAndDelete({ _id });
+    if (!doc) return jsonError("Not found", 404);
+
+    return jsonOk(doc);
   } catch (e: any) {
-    return NextResponse.json({ error: e.message ?? "Server error" }, { status: 500 });
+    console.error(e);
+    return jsonError(e?.message ?? "Server error", 500);
   }
 }
