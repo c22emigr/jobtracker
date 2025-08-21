@@ -45,6 +45,7 @@ export default function Modal({
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title ?? "Edit"}</h2>
           <button
+            type="button"
             onClick={onClose}
             className="rounded border px-2 py-1 text-sm"
             aria-label="Close"

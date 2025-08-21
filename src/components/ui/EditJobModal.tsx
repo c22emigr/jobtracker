@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import type { Job } from "@/lib/types";
 import { Field } from "@/components/ui/Field";
+import { useFocusError } from "@/lib/hooks/useFocusError";
 
 export default function EditJobModal({
   open,
@@ -17,13 +18,21 @@ export default function EditJobModal({
   setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
 }) {
   const firstRef = useRef<HTMLInputElement | null>(null);
+  const companyRef  = useRef<HTMLInputElement | null>(null);
+  const locationRef = useRef<HTMLInputElement | null>(null);
+  const statusRef   = useRef<HTMLSelectElement | null>(null);
+  const noteRef     = useRef<HTMLTextAreaElement | null>(null);
+
+  // Define status options
+  const STATUS_OPTIONS = ["applied", "interview", "rejected"] as const;
+  type Status = typeof STATUS_OPTIONS[number];
 
   // local form state
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
   const [location, setLocation] = useState("");
   const [note, setNote] = useState("");
-  const [status, setStatus] = useState<Job["status"]>("applied");
+  const [status, setStatus] = useState<Status>("applied");
   const [favorite, setFavorite] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -35,10 +44,18 @@ export default function EditJobModal({
   const dirty =                             
     role.trim() !== (job.role ?? "") ||
     company.trim() !== (job.company ?? "") ||
-    (location ?? "") !== (job.location ?? "") ||
-    (note ?? "") !== (job.note ?? "") ||
+    location.trim() !== (job.location ?? "") ||
+    note.trim() !== (job.note ?? "") ||
     status !== job.status ||
     favorite !== !!job.favorite;
+
+  useFocusError(open, errors, { // Autofocus error line in modal
+    role: firstRef,
+    company: companyRef,
+    location: locationRef,
+    status: statusRef,
+    note: noteRef,
+  });
 
   // hydrate fields when opening / job changes
   useEffect(() => {
@@ -52,6 +69,12 @@ export default function EditJobModal({
       setTimeout(() => firstRef.current?.focus(), 0);
     }
   }, [open, job]);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {  // Enter for submit
+    e.preventDefault();
+    if (saving || !dirty) return;
+    void handleSave();
+  };
 
 async function handleSave() {
   setSaving(true);
@@ -98,11 +121,12 @@ async function handleSave() {
   } finally {
     setSaving(false);
   }
+  
 }
 
   return (
 <Modal open={open} onClose={onClose} title={`Edit: ${job.role} · ${job.company}`}>
-  <div className="grid grid-cols-1 gap-3">
+  <form className="grid grid-cols-1 gap-3" onSubmit={onSubmit}>
     <div className="grid grid-cols-2 gap-3">
       <Field name="role" error={errors.role}>
         <input
@@ -116,6 +140,7 @@ async function handleSave() {
 
       <Field name="company" error={errors.company}>
         <input
+          ref={companyRef}
           className="rounded border px-2 py-1.5 w-full"
           placeholder="Company"
           value={company}
@@ -127,6 +152,7 @@ async function handleSave() {
     <div className="grid grid-cols-2 gap-3">
       <Field name="location" error={errors.location}>
         <input
+          ref={locationRef}
           className="rounded border px-2 py-1.5 w-full"
           placeholder="Location"
           value={location}
@@ -136,13 +162,16 @@ async function handleSave() {
 
       <Field name="status" error={errors.status}>
         <select
+          ref={statusRef}
           className="rounded border px-2 py-1.5 w-full"
           value={status}
           onChange={e => setStatus(e.target.value as Job["status"])}
         >
-          <option value="applied">applied</option>
-          <option value="interview">interview</option>
-          <option value="rejected">rejected</option>
+          {STATUS_OPTIONS.map(option => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
         </select>
       </Field>
     </div>
@@ -175,18 +204,18 @@ async function handleSave() {
     )}
 
     <div className="mt-2 flex justify-end gap-2">
-      <button onClick={onClose} className="rounded border px-3 py-1.5 text-sm">
+      <button onClick={onClose} type="button" className="rounded border px-3 py-1.5 text-sm">
         Cancel
       </button>
       <button
-        onClick={handleSave}
+        type="submit"
         disabled={saving || !dirty}
         className="rounded border px-3 py-1.5 text-sm font-medium bg-black text-white disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save"}
       </button>
     </div>
-  </div>
+  </form>
 </Modal>
   );
 }
