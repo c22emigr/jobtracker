@@ -5,6 +5,7 @@ import Modal from "@/components/ui/Modal";
 import type { Job } from "@/lib/types";
 import { Field } from "@/components/ui/Field";
 import { useFocusError } from "@/lib/hooks/useFocusError";
+import { toast } from "sonner";
 
 export default function EditJobModal({
   open,
@@ -112,8 +113,13 @@ async function handleSave() {
         setErrors(mapZodDetails(json.details));
       }
       setGeneralError(json?.error ?? res.statusText ?? "Failed to save");
+      toast.error("Failed to save changes", {
+        description: json?.error ?? "Fix the highlighted fields and try again.",
+      });
       return; // keep modal open so error can be fixed
     }
+
+    toast.success("Changes saved");
     onClose();
   } catch (e: any) {
     setJobs(list => list.map(j => (j._id === id ? prevSnapshot : j)));

@@ -1,5 +1,6 @@
 "use client";
 import type { Job } from "@/lib/types";
+import { toast } from "sonner";
 
 export async function toggleFavorite({
     id,
@@ -29,14 +30,16 @@ export async function toggleFavorite({
       // State is reverted on server error
       if (rollback) setJobs(rollback);
       const err = await res.json().catch(() => ({}));
-      console.error("toggleFavorite failed:", err);
+      toast.error("Could not update favorite", { description: err?.error ?? res.statusText });
       return false;
     }
 
+    toast.success(next ? "Added to favorites" : "Removed from favorites");
     return true;
   } catch (e) {
     console.error("toggleFavorite network error:", e);
     if (rollback) setJobs(rollback);
+    toast.error("Network error");
     return false;
   }
 }
