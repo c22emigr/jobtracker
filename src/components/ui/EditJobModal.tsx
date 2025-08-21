@@ -135,6 +135,8 @@ async function handleSave() {
           placeholder="Role"
           value={role}
           onChange={e => setRole(e.target.value)}
+          minLength={2}
+          maxLength={100}
         />
       </Field>
 
@@ -145,6 +147,8 @@ async function handleSave() {
           placeholder="Company"
           value={company}
           onChange={e => setCompany(e.target.value)}
+          minLength={2}
+          maxLength={100}
         />
       </Field>
     </div>
@@ -153,6 +157,7 @@ async function handleSave() {
       <Field name="location" error={errors.location}>
         <input
           ref={locationRef}
+          pattern="[\p{L}\s]+"
           className="rounded border px-2 py-1.5 w-full"
           placeholder="Location"
           value={location}
@@ -183,7 +188,11 @@ async function handleSave() {
         placeholder="Note"
         value={note}
         onChange={e => setNote(e.target.value)}
+        maxLength={250}
       />
+      <div className="text-xs text-gray-500 mt-1">
+        {note.length}/250
+      </div>
     </Field>
 
     <Field name="favorite" error={errors.favorite}>
