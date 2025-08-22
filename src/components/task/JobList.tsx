@@ -48,7 +48,8 @@ export default function JobList({
   const [onlyFav, setOnlyFav] = useState(false);
 
   // Status filter
-  const [statusFilter, setStatusFilter] = useState<Job["status"] | "all">("all");
+  type StatusFilter = Job["status"] | "all" | "favorite";
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   // Search state
   const [query, setQuery] = useState("");
@@ -64,42 +65,42 @@ export default function JobList({
 
 
   // Sorted array of jobs after sorting
-  const sortedJobs = useMemo(() => {
-    // filter first (if needed), then copy to sort
-    const base = onlyFav ? jobs.filter(j => j.favorite) : jobs.slice();
-
-    base.sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === "favorite") {
-        cmp = (a.favorite ? 1 : 0) - (b.favorite ? 1 : 0);
-      } else if (sortKey === "status") {
-        cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-      } else if (sortKey === "company") {
-        cmp = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
-      } else {
-        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-        if (cmp === 0) {
-        // tie-breaker to sort between favorites
-        const t1 = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
-        if (t1) cmp = t1;
-        else cmp = a._id.localeCompare(b._id);
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-
-    return base;
-}, [jobs, sortKey, sortDir, onlyFav]);
+const sortedJobs = useMemo(() => {
+  const base = jobs.slice(); // no onlyFav here
+  base.sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === "favorite") {
+      cmp = (a.favorite ? 1 : 0) - (b.favorite ? 1 : 0);
+    } else if (sortKey === "status") {
+      cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    } else if (sortKey === "company") {
+      cmp = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
+    } else {
+      cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    if (cmp === 0) {
+      const t1 = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
+      cmp = t1 || a._id.localeCompare(b._id);
+    }
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+  return base;
+}, [jobs, sortKey, sortDir]);
 
   // Search company, role, location
 const filteredJobs = useMemo(() => {
   const q = query.trim().toLowerCase();
 
   return sortedJobs.filter(j => {
-    // status filter
-    if (statusFilter !== "all" && j.status !== statusFilter) return false;
+    // status / favorite filter
+    if (statusFilter === "favorite" && !j.favorite) return false;
+    if (
+      statusFilter !== "all" &&
+      statusFilter !== "favorite" &&
+      j.status !== statusFilter
+    ) return false;
 
-    // search filter
+    // text search
     if (q) {
       return (
         j.company.toLowerCase().includes(q) ||
@@ -107,7 +108,6 @@ const filteredJobs = useMemo(() => {
         (j.location ?? "").toLowerCase().includes(q)
       );
     }
-
     return true;
   });
 }, [sortedJobs, query, statusFilter]);
@@ -150,15 +150,19 @@ const filteredJobs = useMemo(() => {
 
   // keyboard nav
   function onListKeyDown(e: React.KeyboardEvent<HTMLUListElement>) {
-    if (!jobs.length) return;
+    if (!filteredJobs.length) return;
     const tag = (e.target as HTMLElement).tagName.toUpperCase();
     if (["BUTTON", "INPUT", "TEXTAREA", "SELECT", "A"].includes(tag)) return;
 
-    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(p => p === null ? 0 : Math.min(p + 1, jobs.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(p => p === null ? jobs.length - 1 : Math.max(p - 1, 0)); }
-    else if (e.key === "Enter" && activeIndex !== null) {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
-      const job = jobs[activeIndex];
+      setActiveIndex(p => (p === null ? 0 : Math.min(p + 1, filteredJobs.length - 1)));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex(p => (p === null ? filteredJobs.length - 1 : Math.max(p - 1, 0)));
+    } else if (e.key === "Enter" && activeIndex !== null) {
+      e.preventDefault();
+      const job = filteredJobs[activeIndex];
       if (job) updateStatus(job._id, "interview");
     }
   }
@@ -197,13 +201,14 @@ return (
       </button>
       <select
         value={statusFilter}
-        onChange={e => setStatusFilter(e.target.value as any)}
+        onChange={e => setStatusFilter(e.target.value as StatusFilter)}
         className="border rounded px-2 py-1 text-sm"
       >
         <option value="all">All</option>
         <option value="applied">Applied</option>
         <option value="interview">Interview</option>
         <option value="rejected">Rejected</option>
+        <option value="favorite">Favorite</option>
       </select>
       <span className="text-sm text-gray-600 ml-2">
         {filteredJobs.length} job{filteredJobs.length !== 1 && "s"}
@@ -245,6 +250,12 @@ return (
               {job.note && <div className="text-sm mt-1">{job.note}</div>}
             </div>
             <div className="flex gap-2">
+              <button
+                onClick={() => updateStatus(job._id, "applied")}
+                className="px-2 py-1 border rounded"
+              >
+                Applied
+              </button>
               <button
                 onClick={() => updateStatus(job._id, "rejected")}
                 className="px-2 py-1 border rounded"
