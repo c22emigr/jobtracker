@@ -139,14 +139,35 @@ const filteredJobs = useMemo(() => {
       return prev.filter(j => j._id !== id);
       });
 
+    // delay API call to allow for undo
+    let cancelled = false;
+    const undo = () => {
+      cancelled = true;
+      setJobs(snapshot);
+    };
+
+  const t = setTimeout(async () => {
+    if (cancelled) return;
     const res = await api<{ ok: true }>(`/api/jobs/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setJobs(snapshot);
       toast.error("Delete failed", { description: res.error });
-      return;
+    } else {
+      toast.success("Job deleted");
     }
-    toast.success("Job deleted");
-  }
+  }, 5000); // 5s window
+
+  toast.message("Job removed", {
+    description: "Undo?",
+    action: {
+      label: "Undo",
+      onClick: () => {
+        clearTimeout(t);
+        undo();
+      },
+    },
+  });
+}
 
   // keyboard nav
   function onListKeyDown(e: React.KeyboardEvent<HTMLUListElement>) {
