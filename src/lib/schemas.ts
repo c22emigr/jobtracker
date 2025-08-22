@@ -13,12 +13,19 @@ const isoDate = z
 
 const Tag = z.string().min(1).max(30).trim();
 
+const LettersAndSpaces = /^[\p{L}\s]+$/u;
+
 // ---------- Job ----------
 export const JobApplicationSchema = z.object({
   role: z.string().min(2),
   company: z.string().min(2),
-  location: z.string().optional(),
-  note: z.string().optional(),
+  location: z
+    .string()
+    .trim()
+    .min(2, "Location must be at least 2 characters")
+    .regex(LettersAndSpaces, "Letters and spaces only")
+    .optional(),
+  note: z.string().max(250, "Max 250 characters").optional(),
   status: JobStatusSchema.default("applied"),
   favorite: z.boolean().default(false),
   tags: z.array(Tag).default([]),
@@ -27,11 +34,23 @@ export const JobApplicationSchema = z.object({
 });
 
 // ---------- Job Update ----------
-export const JobUpdateSchema = z.object({
-  status: JobStatusSchema.optional(),
-  favorite: z.boolean().optional(),
-  tags: z.array(Tag).optional(),
-}).refine(obj => Object.keys(obj).length > 0, "No fields to update");
+export const JobUpdateSchema = z
+  .object({
+    role: z.string().min(2).optional(),
+    company: z.string().min(2).optional(),
+    location: z
+      .string()
+      .trim()
+      .min(2, "Location must be at least 2 characters")
+      .regex(LettersAndSpaces, "Letters and spaces only")
+      .optional(),
+    note: z.string().max(250, "Max 250 characters").optional(),
+    status: JobStatusSchema.optional(),
+    favorite: z.boolean().optional(),
+    tags: z.array(Tag).optional(),
+  })
+  .strict()
+  .refine(obj => Object.keys(obj).length > 0, { message: "No fields to update" });
 
 
 // ---------- Todo ----------
