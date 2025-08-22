@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Job } from "@/lib/types";
 import { toggleFavorite } from "@/utils/toogleFavorite";
 import EditJobModal from "@/components/ui/EditJobModal";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 type SortKey = "status" | "company" | "createdAt" | "favorite";
 type SortDir = "asc" | "desc";
@@ -131,19 +133,20 @@ const filteredJobs = useMemo(() => {
 
   // Updates backend
   async function remove(id: string) {
-    const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setJobs(prev => prev.filter(j => j._id !== id));
-      setActiveIndex(prev => {
-        if (prev === null) return null;
-        const newLen = filteredJobs.length - 1;         // length after removal
-        return newLen <= 0 ? null : Math.min(prev, newLen - 1);
+    let snapshot: Job[] = [];
+    setJobs(prev => {
+      snapshot = [...prev];
+      return prev.filter(j => j._id !== id);
       });
-    } else {
-      const err = await res.json().catch(() => ({}));
-      alert(`Failed to delete: ${err.error ?? res.statusText}`);
+
+    const res = await api<{ ok: true }>(`/api/jobs/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setJobs(snapshot);
+      toast.error("Delete failed", { description: res.error });
+      return;
     }
-}
+    toast.success("Job deleted");
+  }
 
   // keyboard nav
   function onListKeyDown(e: React.KeyboardEvent<HTMLUListElement>) {

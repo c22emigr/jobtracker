@@ -6,6 +6,7 @@ import type { Job } from "@/lib/types";
 import { Field } from "@/components/ui/Field";
 import { useFocusError } from "@/lib/hooks/useFocusError";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 export default function EditJobModal({
   open,
@@ -71,64 +72,67 @@ export default function EditJobModal({
     }
   }, [open, job]);
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {  // Enter for submit
-    e.preventDefault();
-    if (saving || !dirty) return;
-    void handleSave();
-  };
+const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  if (saving || !dirty) return;
+  void handleSave();
+};
 
-async function handleSave() {
-  setSaving(true);
-  setErrors({});
-  setGeneralError(null);
 
-  const id = job._id;
-  const payload = {
-    role: role.trim(),
-    company: company.trim(),
-    location: location.trim(),
-    note: note.trim(),
-    status,
-    favorite,
-  };
+  async function handleSave() {
+    setSaving(true);
+    setErrors({});
+    setGeneralError(null);
 
-  const prevSnapshot = { ...job };
+    const id = job._id;
+    const payload = {
+      role: role.trim(),
+      company: company.trim(),
+      location: location.trim(),
+      note: note.trim(),
+      status,      // Status from STATUS_OPTIONS
+      favorite,
+    };
 
-  // UI update
-  setJobs(list => list.map(j => (j._id === id ? { ...j, ...payload } : j)));
+    const prevSnapshot = { ...job };
 
-  try {
-    const res = await fetch(`/api/jobs/${id}`, {
+    // optimistic UI
+    setJobs(list => list.map(j => (j._id === id ? { ...j, ...payload } : j)));
+
+    // call via api() helper
+    const res = await api<Job>(`/api/jobs/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json = await res.json().catch(() => ({}));
 
-    if (!res.ok || !json?.ok) {
-      // rollback
+    if (!res.ok) {
+      // rollback + errors
       setJobs(list => list.map(j => (j._id === id ? prevSnapshot : j)));
-      if (json?.details) {
+
+      if (res.details) {
         const { mapZodDetails } = await import("@/lib/errorMap");
-        setErrors(mapZodDetails(json.details));
+        setErrors(mapZodDetails(res.details));
       }
-      setGeneralError(json?.error ?? res.statusText ?? "Failed to save");
+
+      const msg = res.error ?? "Failed to save";
+      setGeneralError(msg);
       toast.error("Failed to save changes", {
-        description: json?.error ?? "Fix the highlighted fields and try again.",
+        description: msg || "Fix the highlighted fields and try again.",
       });
-      return; // keep modal open so error can be fixed
+
+      setSaving(false);
+      return; // keep modal open
+    }
+
+    // sync with the server
+    if (res.data) {
+      setJobs(list => list.map(j => (j._id === id ? res.data! : j)));
     }
 
     toast.success("Changes saved");
-    onClose();
-  } catch (e: any) {
-    setJobs(list => list.map(j => (j._id === id ? prevSnapshot : j)));
-    setGeneralError(e?.message ?? "Network error");
-  } finally {
     setSaving(false);
+    onClose();
   }
-  
-}
 
   return (
 <Modal open={open} onClose={onClose} title={`Edit: ${job.role} · ${job.company}`}>
@@ -176,7 +180,7 @@ async function handleSave() {
           ref={statusRef}
           className="rounded border px-2 py-1.5 w-full"
           value={status}
-          onChange={e => setStatus(e.target.value as Job["status"])}
+          onChange={e => setStatus(e.target.value as Status)}
         >
           {STATUS_OPTIONS.map(option => (
             <option key={option} value={option}>

@@ -19,18 +19,23 @@ function oid(id: string) { // Validate oid
   return ObjectId.isValid(id) ? new ObjectId(id) : null;
 }
 
+const LettersAndSpaces = /^[\p{L}\s]+$/u;
+
 // Partial updates to jobs through edit
-const JobUpdateSchema = z
-  .object({
-    role: z.string().min(2).optional(),
-    company: z.string().min(2).optional(),
-    location: z.string().optional(),
-    note: z.string().optional(),
-    status: JobStatusSchema.optional(),
-    favorite: z.boolean().optional(),
-  })
-  .strict()
-  .refine(obj => Object.keys(obj).length > 0, { message: "Empty body" });
+const JobUpdateSchema = z.object({
+  role: z.string().min(2).optional(),
+  company: z.string().min(2).optional(),
+  location: z.string()
+    .trim()
+    .min(2, "Location must be at least 2 characters")
+    .regex(LettersAndSpaces, "Letters and spaces only")
+    .optional(),
+  note: z.string().max(250).optional(), // mirrors UI cap
+  status: JobStatusSchema.optional(),
+  favorite: z.boolean().optional(),
+})
+.strict()
+.refine(obj => Object.keys(obj).length > 0, { message: "Empty body" });
 
 export async function PATCH(
   req: Request,
