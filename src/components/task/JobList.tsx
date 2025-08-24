@@ -1,21 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Job } from "@/lib/types";
+import { Job, SortKey, SortDir } from "@/lib/types";
 import { toggleFavorite } from "@/utils/toogleFavorite";
 import EditJobModal from "@/components/ui/EditJobModal";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useViewQuery } from "@/lib/hooks/useViewQuery";
+import { useDebounceValue } from "@/lib/hooks/useDebounceValue";
+import { useKeyboardNav } from "@/lib/hooks/useKeyboardNav";
+import { useJobsSort} from "@/lib/hooks/useJobsSort";
 
-type SortKey = "status" | "company" | "createdAt" | "favorite";
-type SortDir = "asc" | "desc";
-
-const STATUS_ORDER: Record<Job["status"], number> = { // Define order for status
-  applied: 0,
-  interview: 1,
-  rejected: 2,
-};
 
 export default function JobList({
   jobs,
@@ -52,8 +47,8 @@ export default function JobList({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   // Search state
-  const [query, setQuery] = useState("");
-  const [queryInput, setQueryInput] = useState(query); // for debounce
+  const [queryInput, setQueryInput] = useState(""); // for debounce
+  const query = useDebounceValue(queryInput, 200);
 
   // For refocus
   const listRef = useRef<Array<HTMLLIElement | null>>([]);
@@ -64,74 +59,44 @@ export default function JobList({
     listEl.current?.focus();
   }, []);
 
-  // Debounce for search
-  useEffect(() => { 
-    const t = setTimeout(() => setQuery(queryInput), 200);
-    return () => clearTimeout(t);
-  }, [queryInput]);
-
-  // If URL hydrates query its shown in textbox
-  useEffect(() => {
-    setQueryInput(query);
-  }, [query]);
-
   // For saving filter/sort in URL
   useViewQuery({
     sortKey, setSortKey,
     sortDir, setSortDir,
     filter: statusFilter,
     setFilter: v => setStatusFilter(v as StatusFilter),
-    q: query, setQ: setQuery,          // hook syncs URL from query
+
+    q: queryInput, setQ: setQueryInput,          // hook syncs URL from query
     defaults: { sortKey: "createdAt", sortDir: "desc", filter: "all", q: "" },
   });
 
-  // Sorted array of jobs after sorting
-const sortedJobs = useMemo(() => {
-  const base = jobs.slice(); // no onlyFav here
-  base.sort((a, b) => {
-    let cmp = 0;
-    if (sortKey === "favorite") {
-      cmp = (a.favorite ? 1 : 0) - (b.favorite ? 1 : 0);
-    } else if (sortKey === "status") {
-      cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-    } else if (sortKey === "company") {
-      cmp = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
-    } else {
-      cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    }
-    if (cmp === 0) {
-      const t1 = a.company.localeCompare(b.company, undefined, { sensitivity: "base" });
-      cmp = t1 || a._id.localeCompare(b._id);
-    }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
-  return base;
-}, [jobs, sortKey, sortDir]);
+  // Sorted array of jobs after sorting (hook)
+  const sortedJobs = useJobsSort(jobs, sortKey, sortDir);
 
   // Search company, role, location
-const filteredJobs = useMemo(() => {
-  const q = query.trim().toLowerCase();
+  const filteredJobs = useMemo(() => {
+    const q = query.trim().toLowerCase();
 
-  return sortedJobs.filter(j => {
-    // status / favorite filter
-    if (statusFilter === "favorite" && !j.favorite) return false;
-    if (
-      statusFilter !== "all" &&
-      statusFilter !== "favorite" &&
-      j.status !== statusFilter
-    ) return false;
+    return sortedJobs.filter(j => {
+      // status / favorite filter
+      if (statusFilter === "favorite" && !j.favorite) return false;
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "favorite" &&
+        j.status !== statusFilter
+      ) return false;
 
-    // text search
-    if (q) {
-      return (
-        j.company.toLowerCase().includes(q) ||
-        j.role.toLowerCase().includes(q) ||
-        (j.location ?? "").toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-}, [sortedJobs, query, statusFilter]);
+      // text search
+      if (q) {
+        return (
+          j.company.toLowerCase().includes(q) ||
+          j.role.toLowerCase().includes(q) ||
+          (j.location ?? "").toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [sortedJobs, query, statusFilter]);
 
   // Reset selection after sort changes
   useEffect(() => {
@@ -204,24 +169,15 @@ const filteredJobs = useMemo(() => {
 }
 
   // keyboard nav
-  function onListKeyDown(e: React.KeyboardEvent<HTMLUListElement>) {
-    if (!filteredJobs.length) return;
-    const tag = (e.target as HTMLElement).tagName.toUpperCase();
-    if (["BUTTON", "INPUT", "TEXTAREA", "SELECT", "A"].includes(tag)) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex(p => (p === null ? 0 : Math.min(p + 1, filteredJobs.length - 1)));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex(p => (p === null ? filteredJobs.length - 1 : Math.max(p - 1, 0)));
-    } else if (e.key === "Enter" && activeIndex !== null) {
-      e.preventDefault();
-      const job = filteredJobs[activeIndex];
+  const onListKeyDown = useKeyboardNav ({
+    itemCount: filteredJobs.length,
+    getActiveIndex: () => activeIndex,
+    setActiveIndex,
+    onEnter: (i) => {
+      const job = filteredJobs[i];
       if (job) updateStatus(job._id, "interview");
-    } else if (e.key === "Home") { e.preventDefault(); setActiveIndex(filteredJobs.length ? 0 : null); }
-      else if (e.key === "End")  { e.preventDefault(); setActiveIndex(filteredJobs.length ? filteredJobs.length - 1 : null); }
-  }
+    },
+  });
 
   // focus active item when changed
   useEffect(() => {

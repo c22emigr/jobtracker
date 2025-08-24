@@ -1,4 +1,6 @@
 export type JobStatus = 'applied' | 'interview' | 'rejected';
+export type SortKey = "status" | "company" | "createdAt" | "favorite";
+export type SortDir = "asc" | "desc";
 
 export interface JobApplication {
   _id?: string;            // from MongoDB
