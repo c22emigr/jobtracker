@@ -6,6 +6,7 @@ import { toggleFavorite } from "@/utils/toogleFavorite";
 import EditJobModal from "@/components/ui/EditJobModal";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { useViewQuery } from "@/lib/hooks/useViewQuery";
 
 type SortKey = "status" | "company" | "createdAt" | "favorite";
 type SortDir = "asc" | "desc";
@@ -45,7 +46,6 @@ export default function JobList({
   // Sorting state
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [onlyFav, setOnlyFav] = useState(false);
 
   // Status filter
   type StatusFilter = Job["status"] | "all" | "favorite";
@@ -53,6 +53,7 @@ export default function JobList({
 
   // Search state
   const [query, setQuery] = useState("");
+  const [queryInput, setQueryInput] = useState(query); // for debounce
 
   // For refocus
   const listRef = useRef<Array<HTMLLIElement | null>>([]);
@@ -63,6 +64,26 @@ export default function JobList({
     listEl.current?.focus();
   }, []);
 
+  // Debounce for search
+  useEffect(() => { 
+    const t = setTimeout(() => setQuery(queryInput), 200);
+    return () => clearTimeout(t);
+  }, [queryInput]);
+
+  // If URL hydrates query its shown in textbox
+  useEffect(() => {
+    setQueryInput(query);
+  }, [query]);
+
+  // For saving filter/sort in URL
+  useViewQuery({
+    sortKey, setSortKey,
+    sortDir, setSortDir,
+    filter: statusFilter,
+    setFilter: v => setStatusFilter(v as StatusFilter),
+    q: query, setQ: setQuery,          // hook syncs URL from query
+    defaults: { sortKey: "createdAt", sortDir: "desc", filter: "all", q: "" },
+  });
 
   // Sorted array of jobs after sorting
 const sortedJobs = useMemo(() => {
@@ -115,20 +136,33 @@ const filteredJobs = useMemo(() => {
   // Reset selection after sort changes
   useEffect(() => {
     setActiveIndex(null);
-  }, [sortKey, sortDir, jobs.length]);
+  }, [sortKey, sortDir, query, statusFilter, filteredJobs.length]);
+
+  // Reset list after delete
+  useEffect(() => {
+    setActiveIndex(i => (i == null ? i : Math.min(i, filteredJobs.length - 1)));
+  }, [filteredJobs.length]);
 
   // Updates backend
   async function updateStatus(id: string, status: Job["status"]) {
-    const res = await fetch(`/api/jobs/${id}`, {
+    let snapshot: Job[] = [];
+    setJobs(prev => {
+      snapshot = [...prev];
+      return prev.map(j => (j._id === id ? { ...j, status } : j));
+    });
+
+    const res = await api<Job>(`/api/jobs/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    if (res.ok) {
-      setJobs(prev =>
-        prev.map(j => (j._id === id ? { ...j, status } : j))
-      );
-    } else alert("Failed to update");
+
+    if (!res.ok) {
+      setJobs(snapshot);
+      toast.error("Status update failed", { description: res.error });
+      return;
+    }
+    if (res.data) setJobs(prev => prev.map(j => (j._id === id ? res.data! : j)));
+    toast.success("Status updated");
   }
 
   // Updates backend
@@ -185,13 +219,14 @@ const filteredJobs = useMemo(() => {
       e.preventDefault();
       const job = filteredJobs[activeIndex];
       if (job) updateStatus(job._id, "interview");
-    }
+    } else if (e.key === "Home") { e.preventDefault(); setActiveIndex(filteredJobs.length ? 0 : null); }
+      else if (e.key === "End")  { e.preventDefault(); setActiveIndex(filteredJobs.length ? filteredJobs.length - 1 : null); }
   }
 
   // focus active item when changed
   useEffect(() => {
-    if (activeIndex !== null && listRef.current[activeIndex]) {
-      listRef.current[activeIndex]?.focus();
+    if (activeIndex != null) {
+      listRef.current[activeIndex]?.focus({ preventScroll: true });
     }
   }, [activeIndex]);
 
@@ -235,8 +270,8 @@ return (
         {filteredJobs.length} job{filteredJobs.length !== 1 && "s"}
       </span>
       <input
-        value={query}
-        onChange={e => setQuery(e.target.value)}
+        value={queryInput}
+        onChange={e => setQueryInput(e.target.value)}
         placeholder="Filter by company/role…"
         className="border rounded px-2 py-1 text-sm ml-auto"
       />
