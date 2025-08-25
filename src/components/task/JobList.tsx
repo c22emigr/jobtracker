@@ -4,12 +4,13 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Job, SortKey, SortDir } from "@/lib/types";
 import { toggleFavorite } from "@/utils/toogleFavorite";
 import EditJobModal from "@/components/ui/EditJobModal";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
 import { useViewQuery } from "@/lib/hooks/useViewQuery";
 import { useDebounceValue } from "@/lib/hooks/useDebounceValue";
 import { useKeyboardNav } from "@/lib/hooks/useKeyboardNav";
 import { useJobsSort} from "@/lib/hooks/useJobsSort";
+import { removeJob } from "@/utils/removeJob";
+import { updateStatus } from "@/utils/updateStatus";
+import { filterJobs } from "@/utils/filterJobs";
 
 
 export default function JobList({
@@ -73,30 +74,9 @@ export default function JobList({
   // Sorted array of jobs after sorting (hook)
   const sortedJobs = useJobsSort(jobs, sortKey, sortDir);
 
-  // Search company, role, location
-  const filteredJobs = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  // Filter jobs from util
+  const filteredJobs = filterJobs(sortedJobs, { q: query, statusFilter });
 
-    return sortedJobs.filter(j => {
-      // status / favorite filter
-      if (statusFilter === "favorite" && !j.favorite) return false;
-      if (
-        statusFilter !== "all" &&
-        statusFilter !== "favorite" &&
-        j.status !== statusFilter
-      ) return false;
-
-      // text search
-      if (q) {
-        return (
-          j.company.toLowerCase().includes(q) ||
-          j.role.toLowerCase().includes(q) ||
-          (j.location ?? "").toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [sortedJobs, query, statusFilter]);
 
   // Reset selection after sort changes
   useEffect(() => {
@@ -108,66 +88,6 @@ export default function JobList({
     setActiveIndex(i => (i == null ? i : Math.min(i, filteredJobs.length - 1)));
   }, [filteredJobs.length]);
 
-  // Updates backend
-  async function updateStatus(id: string, status: Job["status"]) {
-    let snapshot: Job[] = [];
-    setJobs(prev => {
-      snapshot = [...prev];
-      return prev.map(j => (j._id === id ? { ...j, status } : j));
-    });
-
-    const res = await api<Job>(`/api/jobs/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-
-    if (!res.ok) {
-      setJobs(snapshot);
-      toast.error("Status update failed", { description: res.error });
-      return;
-    }
-    if (res.data) setJobs(prev => prev.map(j => (j._id === id ? res.data! : j)));
-    toast.success("Status updated");
-  }
-
-  // Updates backend
-  async function remove(id: string) {
-    let snapshot: Job[] = [];
-    setJobs(prev => {
-      snapshot = [...prev];
-      return prev.filter(j => j._id !== id);
-      });
-
-    // delay API call to allow for undo
-    let cancelled = false;
-    const undo = () => {
-      cancelled = true;
-      setJobs(snapshot);
-    };
-
-  const t = setTimeout(async () => {
-    if (cancelled) return;
-    const res = await api<{ ok: true }>(`/api/jobs/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      setJobs(snapshot);
-      toast.error("Delete failed", { description: res.error });
-    } else {
-      toast.success("Job deleted");
-    }
-  }, 5000); // 5s window
-
-  toast.message("Job removed", {
-    description: "Undo?",
-    action: {
-      label: "Undo",
-      onClick: () => {
-        clearTimeout(t);
-        undo();
-      },
-    },
-  });
-}
-
   // keyboard nav
   const onListKeyDown = useKeyboardNav ({
     itemCount: filteredJobs.length,
@@ -175,7 +95,7 @@ export default function JobList({
     setActiveIndex,
     onEnter: (i) => {
       const job = filteredJobs[i];
-      if (job) updateStatus(job._id, "interview");
+      if (job) updateStatus(job._id, "interview", setJobs);
     },
   });
 
@@ -263,25 +183,25 @@ return (
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => updateStatus(job._id, "applied")}
+                onClick={() => updateStatus(job._id, "applied", setJobs)}
                 className="px-2 py-1 border rounded"
               >
                 Applied
               </button>
               <button
-                onClick={() => updateStatus(job._id, "rejected")}
+                onClick={() => updateStatus(job._id, "rejected", setJobs)}
                 className="px-2 py-1 border rounded"
               >
                 Reject
               </button>
               <button
-                onClick={() => updateStatus(job._id, "interview")}
+                onClick={() => updateStatus(job._id, "interview", setJobs)}
                 className="px-2 py-1 border rounded"
               >
                 Interview
               </button>
               <button
-                onClick={() => remove(job._id)}
+                onClick={() => removeJob(job._id, setJobs)}
                 className="px-2 py-1 border rounded text-red-600"
               >
                 Delete
