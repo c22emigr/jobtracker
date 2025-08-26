@@ -11,6 +11,8 @@ import { useJobsSort} from "@/lib/hooks/useJobsSort";
 import { removeJob } from "@/utils/removeJob";
 import { updateStatus } from "@/utils/updateStatus";
 import { filterJobs } from "@/utils/filterJobs";
+import { Button } from "../ui/Button";
+import { Star } from "lucide-react";
 
 
 export default function JobList({
@@ -182,43 +184,55 @@ return (
               {job.note && <div className="text-sm mt-1">{job.note}</div>}
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="success"
+                size="sm"
                 onClick={() => updateStatus(job._id, "applied", setJobs)}
                 className="px-2 py-1 border rounded"
               >
                 Applied
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => updateStatus(job._id, "rejected", setJobs)}
                 className="px-2 py-1 border rounded"
               >
                 Reject
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => updateStatus(job._id, "interview", setJobs)}
                 className="px-2 py-1 border rounded"
               >
                 Interview
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => removeJob(job._id, setJobs)}
                 className="px-2 py-1 border rounded text-red-600"
               >
                 Delete
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={job.favorite ? "warning" : "outline"}
+                size="sm"
                 onClick={() => toggleFavorite({ id: job._id, next: !job.favorite, setJobs })}
                 className={`px-2 py-1 border rounded ${job.favorite ? "bg-yellow-400" : ""}`}
                 title="Toggle favorite"
               >
-                {job.favorite ? "★" : "☆"}
-              </button>
-              <button
+                <Star className="h-4 w-4"></Star>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => openEdit(job)}
                 className="px-2 py-1 border rounded text-blue-600"
               >
                 Edit
-              </button>
+              </Button>
             </div>
           </div>
         </li>
