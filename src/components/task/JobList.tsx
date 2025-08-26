@@ -12,19 +12,18 @@ import { removeJob } from "@/utils/removeJob";
 import { updateStatus } from "@/utils/updateStatus";
 import { filterJobs } from "@/utils/filterJobs";
 import { Button } from "../ui/Button";
-import { Star } from "lucide-react";
+import { Star, Plus } from "lucide-react";
+import NewJobModal from "../ui/NewJobModal";
 
+type Props = {
+  jobs: Job[];
+  setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
+  loading: boolean;
+};
+export default function JobList({ jobs, setJobs, loading}: Props) {
 
-export default function JobList({
-  jobs,
-  setJobs,
-  loading,
-    }: {
-      jobs: Job[];
-      setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
-      loading: boolean;
-    }) {
-
+  // NewJobModal
+  const [newOpen, setNewOpen] = useState(false);
   // editJobModal:
   const [editOpen, setEditOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
@@ -248,7 +247,15 @@ return (
         setJobs={setJobs}
       />
     )}
-
+      <button
+        aria-label="Add job"
+        onClick={() => setNewOpen(true)}
+        className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-black text-white text-2xl leading-none grid place-items-center shadow-lg hover:bg-zinc-800 focus:outline-none focus-visible:ring-2"
+        title="Add job"
+      >
+        +
+      </button>
+    <NewJobModal open={newOpen} onClose={() => setNewOpen(false)} setJobs={setJobs}></NewJobModal>
   </div>
 );
 }
