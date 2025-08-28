@@ -23,9 +23,6 @@ export default function Page() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-4">
       <div>
-        <NewJobForm onJobCreated={(job: Job) => setJobs(prev => [...prev, job])} />
-      </div>
-      <div>
         <JobList jobs={jobs} setJobs={setJobs} loading={loading} />
       </div>
     </div>

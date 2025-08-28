@@ -40,21 +40,30 @@ export default function Modal({
       <div className="absolute inset-0 bg-black/40" />
       <div
         ref={containerRef}
-        className="relative z-10 w-full max-w-lg rounded-md bg-white p-4 shadow-lg"
+        className="relative z-10 w-full max-w-lg 
+                  rounded-2xl 
+                  bg-white/85 backdrop-blur-md 
+                  border border-zinc-200
+                  shadow-[0_10px_30px_rgba(0,0,0,0.08)]
+                text-zinc-900 p-6"
       >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title ?? "Edit"}</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">{title ?? "Edit"}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded border px-2 py-1 text-sm"
+            className="inline-flex items-center justify-center
+                      h-8 w-8 rounded-full
+                      hover:bg-zinc-100 active:bg-zinc-200
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50
+                      transition-colors"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <div className="space-y-3">{children}</div>
-        {footer ? <div className="mt-4 flex justify-end gap-2">{footer}</div> : null}
+        <div className="space-y-4">{children}</div>
+        {footer ? <div className="mt-6 flex justify-end gap-2">{footer}</div> : null}
       </div>
     </div>
   );

@@ -208,14 +208,6 @@ return (
                 Interview
               </Button>
               <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => removeJob(job._id, setJobs)}
-                className="px-2 py-1 border rounded text-red-600"
-              >
-                Delete
-              </Button>
-              <Button
                 variant={job.favorite ? "warning" : "outline"}
                 size="sm"
                 onClick={() => toggleFavorite({ id: job._id, next: !job.favorite, setJobs })}
@@ -231,6 +223,14 @@ return (
                 className="px-2 py-1 border rounded text-blue-600"
               >
                 Edit
+              </Button>
+                            <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => removeJob(job._id, setJobs)}
+                className="px-2 py-1 border rounded text-red-600"
+              >
+                Delete
               </Button>
             </div>
           </div>
