@@ -72,46 +72,65 @@ export default function NewJobForm({
   return (
     <form
       onSubmit={handleSubmit}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-        maxWidth: "300px",
-      }}
+      className="grid grid-cols-1 gap-3"
     >
-      <input
-        ref={roleRef}
-        type="text"
-        placeholder="Role"
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
-        required
-        disabled={loading}
-      />
-      <input
-        type="text"
-        placeholder="Company"
-        value={company}
-        onChange={(e) => setCompany(e.target.value)}
-        required
-        disabled={loading}
-      />
-      <input
-        type="text"
-        placeholder="Location"
-        value={location}
-        onChange={(e) => setLocation(e.target.value)}
-        disabled={loading}
-      />
+      {/* First row */}
+      <div className="grid grid-cols-2 gap-3">
+        <input
+          ref={roleRef}
+          type="text"
+          placeholder="Role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          required
+          disabled={loading}
+          className="rounded border px-2 py-1.5 w-full"
+        />
+        <input
+          type="text"
+          placeholder="Company"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          required
+          disabled={loading}
+          className="rounded border px-2 py-1.5 w-full"
+        />
+      </div>
+
+      {/* Second row */}
+      <div className="grid grid-cols-2 gap-3">
+        <input
+          type="text"
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          disabled={loading}
+          className="rounded border px-2 py-1.5 w-full"
+        />
+      </div>
+
+      {/* Note */}
       <textarea
         placeholder="Note"
         value={note}
         onChange={(e) => setNote(e.target.value)}
         disabled={loading}
+        className="rounded border px-2 py-1.5 w-full"
+        rows={3}
+        maxLength={250}
       />
-      <button type="submit" disabled={loading}>
-        {loading ? "Adding..." : "Add Job"}
-      </button>
+      <div className="text-xs text-gray-500 mt-1">{note.length}/250</div>
+
+      {/* Footer */}
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded border px-3 py-1.5 text-sm font-medium bg-black text-white disabled:opacity-50"
+        >
+          {loading ? "Adding…" : "Add Job"}
+        </button>
+      </div>
     </form>
   );
 }

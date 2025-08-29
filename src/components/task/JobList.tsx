@@ -12,8 +12,10 @@ import { removeJob } from "@/utils/removeJob";
 import { updateStatus } from "@/utils/updateStatus";
 import { filterJobs } from "@/utils/filterJobs";
 import { Button } from "../ui/Button";
-import { Star, Plus } from "lucide-react";
+import { Star, MoreHorizontal } from "lucide-react";
 import NewJobModal from "../ui/NewJobModal";
+import { StatusBadge } from "../ui/StatusBadge";
+import { RowMenu } from "./RowMenu";
 
 type Props = {
   jobs: Job[];
@@ -168,8 +170,9 @@ return (
           }}
           tabIndex={0}
           onClick={() => setActiveIndex(index)} // Mouse click to focus li 
-          className={`border rounded p-3 outline-none ${
-            index === activeIndex ? "ring-2 ring-blue-500" : ""
+          className={`border rounded p-3 outline-none
+                    border-[color:var(--border)] bg-[var(--surface)]
+                    ${index === activeIndex ? "ring-2 ring-[var(--ring)]" : ""
           }`}
         >
           <div className="flex justify-between items-center">
@@ -177,61 +180,35 @@ return (
               <div className="font-medium">
                 {job.role} · {job.company}
               </div>
-              <div className="text-sm text-gray-600">
-                {job.location ?? "—"} • {job.status}
+              <div className="text-sm text-[var(--muted-foreground)]">
+                {job.location ?? "—"}
               </div>
-              {job.note && <div className="text-sm mt-1">{job.note}</div>}
+              <div className="mt-1">
+                <StatusBadge status={job.status}></StatusBadge>
+              </div>
+              {job.note && <div className="text-sm mt-2">{job.note}</div>}
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="success"
-                size="sm"
-                onClick={() => updateStatus(job._id, "applied", setJobs)}
-                className="px-2 py-1 border rounded"
-              >
-                Applied
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => updateStatus(job._id, "rejected", setJobs)}
-                className="px-2 py-1 border rounded"
-              >
-                Reject
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => updateStatus(job._id, "interview", setJobs)}
-                className="px-2 py-1 border rounded"
-              >
-                Interview
-              </Button>
-              <Button
-                variant={job.favorite ? "warning" : "outline"}
-                size="sm"
-                onClick={() => toggleFavorite({ id: job._id, next: !job.favorite, setJobs })}
-                className={`px-2 py-1 border rounded ${job.favorite ? "bg-yellow-400" : ""}`}
-                title="Toggle favorite"
-              >
-                <Star className="h-4 w-4"></Star>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => openEdit(job)}
-                className="px-2 py-1 border rounded text-blue-600"
-              >
-                Edit
-              </Button>
-                            <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => removeJob(job._id, setJobs)}
-                className="px-2 py-1 border rounded text-red-600"
-              >
-                Delete
-              </Button>
+            <button
+              onClick={() =>
+                toggleFavorite({ id: job._id, next: !job.favorite, setJobs })
+              }
+              className="p-2 rounded-md border border-[color:var(--border)] hover:bg-[var(--surface-2)] transition"
+              title={job.favorite ? "Unfavorite" : "Favorite"}
+              aria-pressed={job.favorite}
+            >
+              <Star className={`h-4 w-4 ${job.favorite ? "fill-current" : ""}`} />
+            </button>
+
+            <RowMenu
+              job={job}
+              onEdit={() => openEdit(job)}
+              onDelete={() => removeJob(job._id, setJobs)}
+              onUpdateStatus={(s) => updateStatus(job._id, s, setJobs)}
+              onToggleFavorite={() =>
+                toggleFavorite({ id: job._id, next: !job.favorite, setJobs })
+              }
+            />
             </div>
           </div>
         </li>
