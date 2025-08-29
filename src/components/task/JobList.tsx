@@ -116,8 +116,8 @@ export default function JobList({ jobs, setJobs, loading}: Props) {
 
 return (
   <div>
-    <div className="flex items-center gap-2 mb-2">
-      <label className="text-sm text-gray-500">Sort by</label>
+    <div className="flex items-center gap-2 mb-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-3 py-2">
+      <label className="text-sm text-[var(--muted-foreground)]">Sort by</label>
       <select
         value={sortKey}
         onChange={e => setSortKey(e.target.value as SortKey)}
@@ -132,7 +132,7 @@ return (
         onClick={() => setSortDir(d => (d === "asc" ? "desc" : "asc"))}
         className="border rounded px-2 py-1 text-sm"
       >
-        {sortDir === "asc" ? "Asc ↑" : "Desc ↓"}
+        {sortDir === "asc" ? "↑" : "↓"}
       </button>
       <select
         value={statusFilter}
@@ -151,7 +151,7 @@ return (
       <input
         value={queryInput}
         onChange={e => setQueryInput(e.target.value)}
-        placeholder="Filter by company/role…"
+        placeholder="Search..."
         className="border rounded px-2 py-1 text-sm ml-auto"
       />
     </div>

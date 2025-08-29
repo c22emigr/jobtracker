@@ -13,15 +13,6 @@ export interface JobApplication {
   updatedAt: string;       // ISO
 }
 
-export interface TodoItem {
-  _id?: string;            // from MongoDB
-  text: string;
-  dateISO: string;         // yyyy-mm-dd for daily schedule
-  done: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export type Job = {
   _id: string;
   role: string;
@@ -33,3 +24,15 @@ export type Job = {
   updatedAt: string;
   favorite: boolean;
 };
+
+export interface TodoItem {
+  _id: string;            // from MongoDB
+  text: string;
+  dateISO: string | null;         // yyyy-mm-dd for daily schedule
+  done: boolean;
+  priority?: "low" | "medium" | "high";
+  type?: "job" | "personal" | "project"; 
+  createdAt: string;
+  updatedAt: string;
+}
+
