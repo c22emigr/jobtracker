@@ -1,16 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
 import JobList from "@/components/task/JobList";
-import { Job, TodoItem } from "@/lib/types";
+import { Job } from "@/lib/types";
 import TodoList from "@/components/todo/TodoList";
+import { useTodos } from "@/lib/hooks/useTodos";
+import { toast } from "sonner";
 
 export default function Page() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const { items: todos, add, toggle, remove } = useTodos();
 
-  // Load jobs once. New jobs gets fetched
+  // Load jobs from database
   useEffect(() => {
     async function fetchJobs() {
     const res = await fetch("/api/jobs", { cache: "no-store" });
@@ -20,7 +21,6 @@ export default function Page() {
   }
     fetchJobs();
   }, []);
-
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-4">
@@ -28,34 +28,9 @@ export default function Page() {
         <JobList jobs={jobs} setJobs={setJobs} loading={loading} />
       </div>
       <div>
-        <TodoList
-          items={todos}
-          onAdd={(text) =>
-            setTodos(prev => [
-              {
-                _id: crypto.randomUUID(),
-                text,
-                done: false,
-                dateISO: null,                       // or a date string if you want
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              ...prev,
-            ])
-          }
-          onToggle={(id) =>
-            setTodos(prev =>
-              prev.map(t =>
-                t._id === id
-                  ? { ...t, done: !t.done, updatedAt: new Date().toISOString() }
-                  : t
-              )
-            )
-          }
-          onDelete={(id) =>
-            setTodos(prev => prev.filter(t => t._id !== id))
-          }
-        />
+        <TodoList items={todos} onAdd={(t) => add(t).catch(e => toast.error(String(e)))}
+                  onToggle={(id) => toggle(id).catch(e => toast.error(String(e)))}
+                  onDelete={(id) => remove(id).catch(e => toast.error(String(e)))} />
       </div>
     </div>
   );
