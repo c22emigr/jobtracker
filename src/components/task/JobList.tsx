@@ -4,24 +4,28 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { Job, SortKey, SortDir } from "@/lib/types";
 import { toggleFavorite } from "@/utils/toogleFavorite";
 import EditJobModal from "@/components/ui/EditJobModal";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
 import { useViewQuery } from "@/lib/hooks/useViewQuery";
 import { useDebounceValue } from "@/lib/hooks/useDebounceValue";
 import { useKeyboardNav } from "@/lib/hooks/useKeyboardNav";
 import { useJobsSort} from "@/lib/hooks/useJobsSort";
+import { removeJob } from "@/utils/removeJob";
+import { updateStatus } from "@/utils/updateStatus";
+import { filterJobs } from "@/utils/filterJobs";
+import { Button } from "../ui/Button";
+import { Star, MoreHorizontal } from "lucide-react";
+import NewJobModal from "../ui/NewJobModal";
+import { StatusBadge } from "../ui/StatusBadge";
+import { RowMenu } from "./RowMenu";
 
+type Props = {
+  jobs: Job[];
+  setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
+  loading: boolean;
+};
+export default function JobList({ jobs, setJobs, loading}: Props) {
 
-export default function JobList({
-  jobs,
-  setJobs,
-  loading,
-    }: {
-      jobs: Job[];
-      setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
-      loading: boolean;
-    }) {
-
+  // NewJobModal
+  const [newOpen, setNewOpen] = useState(false);
   // editJobModal:
   const [editOpen, setEditOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
@@ -73,30 +77,9 @@ export default function JobList({
   // Sorted array of jobs after sorting (hook)
   const sortedJobs = useJobsSort(jobs, sortKey, sortDir);
 
-  // Search company, role, location
-  const filteredJobs = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  // Filter jobs from util
+  const filteredJobs = filterJobs(sortedJobs, { q: query, statusFilter });
 
-    return sortedJobs.filter(j => {
-      // status / favorite filter
-      if (statusFilter === "favorite" && !j.favorite) return false;
-      if (
-        statusFilter !== "all" &&
-        statusFilter !== "favorite" &&
-        j.status !== statusFilter
-      ) return false;
-
-      // text search
-      if (q) {
-        return (
-          j.company.toLowerCase().includes(q) ||
-          j.role.toLowerCase().includes(q) ||
-          (j.location ?? "").toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [sortedJobs, query, statusFilter]);
 
   // Reset selection after sort changes
   useEffect(() => {
@@ -108,66 +91,6 @@ export default function JobList({
     setActiveIndex(i => (i == null ? i : Math.min(i, filteredJobs.length - 1)));
   }, [filteredJobs.length]);
 
-  // Updates backend
-  async function updateStatus(id: string, status: Job["status"]) {
-    let snapshot: Job[] = [];
-    setJobs(prev => {
-      snapshot = [...prev];
-      return prev.map(j => (j._id === id ? { ...j, status } : j));
-    });
-
-    const res = await api<Job>(`/api/jobs/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-
-    if (!res.ok) {
-      setJobs(snapshot);
-      toast.error("Status update failed", { description: res.error });
-      return;
-    }
-    if (res.data) setJobs(prev => prev.map(j => (j._id === id ? res.data! : j)));
-    toast.success("Status updated");
-  }
-
-  // Updates backend
-  async function remove(id: string) {
-    let snapshot: Job[] = [];
-    setJobs(prev => {
-      snapshot = [...prev];
-      return prev.filter(j => j._id !== id);
-      });
-
-    // delay API call to allow for undo
-    let cancelled = false;
-    const undo = () => {
-      cancelled = true;
-      setJobs(snapshot);
-    };
-
-  const t = setTimeout(async () => {
-    if (cancelled) return;
-    const res = await api<{ ok: true }>(`/api/jobs/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      setJobs(snapshot);
-      toast.error("Delete failed", { description: res.error });
-    } else {
-      toast.success("Job deleted");
-    }
-  }, 5000); // 5s window
-
-  toast.message("Job removed", {
-    description: "Undo?",
-    action: {
-      label: "Undo",
-      onClick: () => {
-        clearTimeout(t);
-        undo();
-      },
-    },
-  });
-}
-
   // keyboard nav
   const onListKeyDown = useKeyboardNav ({
     itemCount: filteredJobs.length,
@@ -175,7 +98,7 @@ export default function JobList({
     setActiveIndex,
     onEnter: (i) => {
       const job = filteredJobs[i];
-      if (job) updateStatus(job._id, "interview");
+      if (job) updateStatus(job._id, "interview", setJobs);
     },
   });
 
@@ -193,8 +116,8 @@ export default function JobList({
 
 return (
   <div>
-    <div className="flex items-center gap-2 mb-2">
-      <label className="text-sm text-gray-500">Sort by</label>
+    <div className="flex items-center gap-2 mb-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-3 py-2">
+      <label className="text-sm text-[var(--muted-foreground)]">Sort by</label>
       <select
         value={sortKey}
         onChange={e => setSortKey(e.target.value as SortKey)}
@@ -209,7 +132,7 @@ return (
         onClick={() => setSortDir(d => (d === "asc" ? "desc" : "asc"))}
         className="border rounded px-2 py-1 text-sm"
       >
-        {sortDir === "asc" ? "Asc ↑" : "Desc ↓"}
+        {sortDir === "asc" ? "↑" : "↓"}
       </button>
       <select
         value={statusFilter}
@@ -228,7 +151,7 @@ return (
       <input
         value={queryInput}
         onChange={e => setQueryInput(e.target.value)}
-        placeholder="Filter by company/role…"
+        placeholder="Search..."
         className="border rounded px-2 py-1 text-sm ml-auto"
       />
     </div>
@@ -247,8 +170,9 @@ return (
           }}
           tabIndex={0}
           onClick={() => setActiveIndex(index)} // Mouse click to focus li 
-          className={`border rounded p-3 outline-none ${
-            index === activeIndex ? "ring-2 ring-blue-500" : ""
+          className={`border rounded p-3 outline-none
+                    border-[color:var(--border)] bg-[var(--surface)]
+                    ${index === activeIndex ? "ring-2 ring-[var(--ring)]" : ""
           }`}
         >
           <div className="flex justify-between items-center">
@@ -256,49 +180,35 @@ return (
               <div className="font-medium">
                 {job.role} · {job.company}
               </div>
-              <div className="text-sm text-gray-600">
-                {job.location ?? "—"} • {job.status}
+              <div className="text-sm text-[var(--muted-foreground)]">
+                {job.location ?? "—"}
               </div>
-              {job.note && <div className="text-sm mt-1">{job.note}</div>}
+              <div className="mt-1">
+                <StatusBadge status={job.status}></StatusBadge>
+              </div>
+              {job.note && <div className="text-sm mt-2">{job.note}</div>}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => updateStatus(job._id, "applied")}
-                className="px-2 py-1 border rounded"
-              >
-                Applied
-              </button>
-              <button
-                onClick={() => updateStatus(job._id, "rejected")}
-                className="px-2 py-1 border rounded"
-              >
-                Reject
-              </button>
-              <button
-                onClick={() => updateStatus(job._id, "interview")}
-                className="px-2 py-1 border rounded"
-              >
-                Interview
-              </button>
-              <button
-                onClick={() => remove(job._id)}
-                className="px-2 py-1 border rounded text-red-600"
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => toggleFavorite({ id: job._id, next: !job.favorite, setJobs })}
-                className={`px-2 py-1 border rounded ${job.favorite ? "bg-yellow-400" : ""}`}
-                title="Toggle favorite"
-              >
-                {job.favorite ? "★" : "☆"}
-              </button>
-              <button
-                onClick={() => openEdit(job)}
-                className="px-2 py-1 border rounded text-blue-600"
-              >
-                Edit
-              </button>
+            <button
+              onClick={() =>
+                toggleFavorite({ id: job._id, next: !job.favorite, setJobs })
+              }
+              className="p-2 rounded-md border border-[color:var(--border)] hover:bg-[var(--surface-2)] transition"
+              title={job.favorite ? "Unfavorite" : "Favorite"}
+              aria-pressed={job.favorite}
+            >
+              <Star className={`h-4 w-4 ${job.favorite ? "fill-current" : ""}`} />
+            </button>
+
+            <RowMenu
+              job={job}
+              onEdit={() => openEdit(job)}
+              onDelete={() => removeJob(job._id, setJobs)}
+              onUpdateStatus={(s) => updateStatus(job._id, s, setJobs)}
+              onToggleFavorite={() =>
+                toggleFavorite({ id: job._id, next: !job.favorite, setJobs })
+              }
+            />
             </div>
           </div>
         </li>
@@ -314,7 +224,15 @@ return (
         setJobs={setJobs}
       />
     )}
-
+      <button
+        aria-label="Add job"
+        onClick={() => setNewOpen(true)}
+        className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-black text-white text-2xl leading-none grid place-items-center shadow-lg hover:bg-zinc-800 focus:outline-none focus-visible:ring-2"
+        title="Add job"
+      >
+        +
+      </button>
+    <NewJobModal open={newOpen} onClose={() => setNewOpen(false)} setJobs={setJobs}></NewJobModal>
   </div>
 );
 }
