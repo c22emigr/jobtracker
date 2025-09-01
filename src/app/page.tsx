@@ -25,12 +25,15 @@ export default function Page() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-4">
       <div>
+        <h2 className="px-1 pb-2 text-md font-medium text-[color:var(--muted-foreground)] tracking-wide">Job applications</h2>
         <JobList jobs={jobs} setJobs={setJobs} loading={loading} />
       </div>
       <div>
-        <TodoList items={todos} onAdd={(t) => add(t).catch(e => toast.error(String(e)))}
-                  onToggle={(id) => toggle(id).catch(e => toast.error(String(e)))}
-                  onDelete={(id) => remove(id).catch(e => toast.error(String(e)))} />
+        <h2 className="px-1 pb-2 text-md font-medium text-[color:var(--muted-foreground)] tracking-wide">Todo list</h2>
+        <TodoList items={todos}
+                  onAdd={add}
+                  onToggle={toggle}
+                  onDelete={remove} />
       </div>
     </div>
   );
