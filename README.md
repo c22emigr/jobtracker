@@ -20,20 +20,20 @@ The Tech Stack used for this project is the following.
 
 File structure:
 src/
- ├── app/               # Next.js app router
- │   ├── api/           # API routes (jobs, todos)
- │   ├── page.tsx       # Main view
- │
- ├── components/
- │   ├── task/          # Job-related UI (JobList, JobRow, etc.)
- │   ├── todo/          # Todo-related UI (TodoList, TodoRow, etc.)
- │
- ├── lib/
- │   ├── hooks/         # Custom React hooks (useTodos, useJobs)
- │   ├── db/            # MongoDB connection helper
- │   ├── types.ts       # TypeScript typer
- │
- public/                # Static assets
+  app/                # Next.js app router
+    api/              # API routes (jobs, todos)
+    page.tsx          # Main view
+
+  components/
+    task/             # Job-related UI (JobList, JobRow, etc.)
+    todo/             # Todo-related UI (TodoList, TodoRow, etc.)
+
+  lib/
+    hooks/            # Custom React hooks (useTodos, useJobs)
+    db/               # MongoDB connection helper
+    types.ts          # TypeScript typer
+
+public/               # Static assets
 
 Planned features to make the app more useful and better visually:
 - User specific jobs and todos
