@@ -4,7 +4,6 @@ import JobList from "@/components/task/JobList";
 import { Job } from "@/lib/types";
 import TodoList from "@/components/todo/TodoList";
 import { useTodos } from "@/lib/hooks/useTodos";
-import { toast } from "sonner";
 
 export default function Page() {
   const [jobs, setJobs] = useState<Job[]>([]);
