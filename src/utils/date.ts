@@ -1,4 +1,4 @@
-export function starOfWeek(d = new Date(), weekStartsOn: 0 | 1 = 1 ) {
+export function startOfWeek(d = new Date(), weekStartsOn: 0 | 1 = 1 ) {
     const day = d.getDay(); // 0 to 6
     const diff = (day - weekStartsOn + 7) % 7;
     const res = new Date(d);
