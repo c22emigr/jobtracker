@@ -13,7 +13,7 @@ export default function WeekStrip({
     items: Item[];
     selected: string;
     onSelect: (isoDay: string) => void;
-    weekStartsOn?: 0 | 1;
+    weekStartsOn?: 0 | 1; // allows Sunday or Monday
 }) {
     const start = startOfWeek(new Date(), weekStartsOn);
     const days = Array.from({ length: 7}, (_, i) => addDays(start, i));
