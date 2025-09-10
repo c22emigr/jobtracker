@@ -7,14 +7,16 @@ import { useTodos } from "@/lib/hooks/useTodos";
 import WeekStrip from "@/components/todo/WeekStrip";
 import { isoDateOnly, sameYMD } from "@/utils/date";
 import { apiStrict } from "@/lib/api";
+import { buildTodoCounts } from "@/utils/todoCounts";
 
 export default function Page() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const { items: todos, add, toggle, remove } = useTodos();
   const [selectedDay, setSelectedDay] =  useState(() => isoDateOnly(new Date ()));
+  const todoCounts = useMemo(() => buildTodoCounts(todos), [todos]);
 
-  const dayTodos = useMemo(
+    const dayTodos = useMemo(
     () => todos.filter(t => t.dateISO && sameYMD(t.dateISO, selectedDay)),
     [todos, selectedDay]
   );
@@ -46,15 +48,16 @@ useEffect(() => {
       <div>
         <h2 className="px-1 pb-2 text-md font-medium text-[color:var(--muted-foreground)] tracking-wide">Todo list</h2>
         <TodoList
-          items={todos}
-          onAdd={add}
+          items={dayTodos}
+          onAdd={(text) => add(text, { dateISO: selectedDay })}
           onToggle={toggle}
           onDelete={remove} />
 
         <WeekStrip 
-          items={todos}
           selected={selectedDay}
-          onSelect={setSelectedDay}/>
+          onSelect={setSelectedDay}
+          todoCounts={todoCounts}
+        />
       </div>
     </div>
   );
