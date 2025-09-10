@@ -6,6 +6,7 @@ import TodoList from "@/components/todo/TodoList";
 import { useTodos } from "@/lib/hooks/useTodos";
 import WeekStrip from "@/components/todo/WeekStrip";
 import { isoDateOnly, sameYMD } from "@/utils/date";
+import { apiStrict } from "@/lib/api";
 
 export default function Page() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -19,15 +20,19 @@ export default function Page() {
   );
 
   // Load jobs from database
-  useEffect(() => {
-    async function fetchJobs() {
-    const res = await fetch("/api/jobs", { cache: "no-store" });
-    const data = await res.json();
-    setJobs(data);
-    setLoading(false);
-  }
-    fetchJobs();
-  }, []);
+useEffect(() => {
+  (async () => {
+    try {
+      const jobs = await apiStrict<Job[]>("/api/jobs");
+      setJobs(jobs);
+    } catch {
+      // optional: could set an error state, or just leave jobs empty
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, []);
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-4">
