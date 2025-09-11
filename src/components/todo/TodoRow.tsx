@@ -33,7 +33,10 @@ export function TodoRow({
         <div className={item.done ? "truncate line-through opacity-60" : "truncate"}>
           {item.text}
         </div>
-        {due && <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{due}</div>}
+        {due ? ( <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{due}</div> 
+        ) : (
+                 <div className="text-xs text-[var(--muted-foreground)] mt-0.5 italic">No date</div>
+        )}
       </div>
 
       <button

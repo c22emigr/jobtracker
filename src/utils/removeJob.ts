@@ -1,13 +1,20 @@
 "use client";
 
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { apiStrict } from "@/lib/api";
 import type { Job } from "@/lib/types";
+
+// Guard to prevent double deletes on same id
+const pendingDeletes = new Set<string>(); 
 
 export async function removeJob(
   id: string,
   setJobs: React.Dispatch<React.SetStateAction<Job[]>>
 ) {
+  if (pendingDeletes.has(id)) return;
+  pendingDeletes.add(id);
+
+  // Optimistic removal
   let snapshot: Job[] = [];
   setJobs(prev => {
     snapshot = [...prev];
@@ -15,30 +22,37 @@ export async function removeJob(
   });
 
   let cancelled = false;
-  const undo = () => {
-    cancelled = true;
-    setJobs(snapshot);
-  };
 
-  const t = setTimeout(async () => {
-    if (cancelled) return;
-    const res = await api<{ ok: true }>(`/api/jobs/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      setJobs(snapshot);
-      toast.error("Delete failed", { description: res.error });
-    } else {
-      toast.success("Job deleted");
-    }
-  }, 5000);
-
-  toast.message("Job removed", {
+  const toastId = toast.message("Job removed", {
     description: "Undo?",
     action: {
       label: "Undo",
       onClick: () => {
-        clearTimeout(t);
-        undo();
+        cancelled = true;
+        clearTimeout(timer);
+        setJobs(snapshot);                         // restores
+        toast.dismiss(toastId);
+        pendingDeletes.delete(id);
       },
     },
-  });
+    duration: 5000, // match timer below
+  })
+
+
+  const timer = window.setTimeout(async () => {
+    try {
+      if (cancelled) return;
+      // DELETE
+      await apiStrict<unknown>(`/api/jobs/${id}`, { method: "DELETE" }, { timeoutMs: 8000 });
+      toast.dismiss(toastId);
+      toast.success("Job deleted");
+    } catch (e: any) {
+      // rollback on failure
+      setJobs(snapshot);
+      toast.dismiss(toastId);
+      toast.error(e?.message ?? "Delete failed");
+    } finally {
+      pendingDeletes.delete(id);
+    }
+  }, 5000);
 }

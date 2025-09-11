@@ -1,7 +1,9 @@
 "use client";
 import type { Job } from "@/lib/types";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { apiStrict } from "@/lib/api";
+
+const pendingFavorite = new Set<string>();
 
 export async function toggleFavorite({
     id,
@@ -12,6 +14,9 @@ export async function toggleFavorite({
     next: boolean;
     setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
 }): Promise<boolean> {
+  if (pendingFavorite.has(id)) return false;
+  pendingFavorite.add(id);
+
     // Snapshot for rollback
     let rollback: Job[] = [];
     setJobs(prev => {
@@ -20,22 +25,24 @@ export async function toggleFavorite({
   });
 
   // Call via helper
-  const res = await api<Job>(`/api/jobs/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ favorite: next }),
-  });
+  try {
+    // strict throws on API error; body is auto-JSON
+    const updated = await apiStrict<Job>(`/api/jobs/${id}`, {
+      method: "PATCH",
+      body: { favorite: next },
+    });
 
-  if (!res.ok) {
+    // replace optimistic with server version
+    setJobs(list => list.map(j => (j._id === id ? updated : j)));
+
+    toast.success(next ? "Added to favorites" : "Removed from favorites");
+    return true;
+  } catch (e: any) {
+    // rollback
     setJobs(rollback);
-    toast.error("Could not update favorite", { description: res.error });
+    toast.error("Could not update favorite", { description: e.message });
     return false;
+  } finally {
+    pendingFavorite.delete(id);
   }
-
-  // replace optimistic with server version
-  if (res.data) {
-    setJobs(list => list.map(j => (j._id === id ? res.data! : j)));
-  }
-
-  toast.success(next ? "Added to favorites" : "Removed from favorites");
-  return true;
 }

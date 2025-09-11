@@ -1,4 +1,4 @@
-export function starOfWeek(d = new Date(), weekStartsOn: 0 | 1 = 1 ) {
+export function startOfWeek(d = new Date(), weekStartsOn = 1 ) {
     const day = d.getDay(); // 0 to 6
     const diff = (day - weekStartsOn + 7) % 7;
     const res = new Date(d);
@@ -14,9 +14,9 @@ export function addDays(date: Date, n:number) {
 }
 
 export function isoDateOnly(d: Date) {
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() +1).padStart(2, "0");
-    const day = String(d.getUTCDay()).padStart(2, "0");
+    const y = d.getFullYear();
+    const m = String(d.getMonth() +1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
 }
 
