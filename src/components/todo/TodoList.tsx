@@ -4,19 +4,26 @@ import { TodoItem } from "@/lib/types";
 import { TodoRow } from "./TodoRow";
 import { toast } from "sonner";
 
+type AddMode = "dated" | "undated"; // Allow for both dated and undated todos
+
 export default function TodoList({
   items,
-  onAdd,
+  onAddDated,
+  onAddUndated,
   onToggle,
   onDelete,
+  defaultAddMode = "dated",
 }: {
   items: TodoItem[];
-  onAdd: (text: string) => Promise<void> | void;
+  onAddDated: (text: string) => Promise<void> | void;
+  onAddUndated: (text: string) => Promise<void> | void;
   onToggle: (id: string) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
+  defaultAddMode?: "dated" | "undated";
 }) {
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
+  const [mode, setMode] = useState<AddMode>(defaultAddMode);
   const canAdd = draft.trim().length > 0 && !adding; // prevents double submits
 
   // catch sync & async handler errors with toast 
@@ -40,7 +47,8 @@ export default function TodoList({
     if (!value) return; // Dont run if no value
     setAdding(true);
     try {
-      await onAdd(text);
+      if (mode === "dated") await onAddDated(text);  // Depending on dated or undated todos
+      else await onAddUndated(text);
       setDraft(""); // clears on success
     } finally {
       setAdding(false);
@@ -69,6 +77,32 @@ export default function TodoList({
           autoComplete="off"
           enterKeyHint="done"
         />
+        <div className="flex items-center rounded-full border border-[color:var(--border)]/70 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setMode("dated")}
+            className={[
+              "px-2 py-1 text-xs",
+              mode === "dated" ? "bg-[var(--surface-2)]" : "opacity-70 hover:opacity-100"
+            ].join(" ")}
+            aria-pressed={mode === "dated"}
+            title="Add to selected day"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("undated")}
+            className={[
+              "px-2 py-1 text-xs",
+              mode === "undated" ? "bg-[var(--surface-2)]" : "opacity-70 hover:opacity-100"
+            ].join(" ")}
+            aria-pressed={mode === "undated"}
+            title="Add with no date"
+          >
+            No date
+          </button>
+        </div>
         <button
           type="submit"
           disabled={!canAdd}
