@@ -23,6 +23,7 @@ export type Job = {
   createdAt: string;
   updatedAt: string;
   favorite: boolean;
+  userId: string; // ID of the user who applied for job
 };
 
 export interface TodoItem {
@@ -34,5 +35,6 @@ export interface TodoItem {
   type?: "job" | "personal" | "project"; 
   createdAt: string;
   updatedAt: string;
+  userId: string; // ID of the user who created the todo
 }
 
