@@ -56,7 +56,7 @@ export const JobUpdateSchema = z
 // ---------- Todo ----------
 export const TodoCreateSchema = z.object({
   text: z.string().min(1).max(200).trim(),
-  dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use yyyy-mm-dd"),
+  dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/,"Use yyyy-mm-dd").nullable().optional(),
 });
 
 export const TodoDocSchema = TodoCreateSchema.extend({

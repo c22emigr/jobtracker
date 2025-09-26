@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // Get current NextAuth session on server
-export function getSession() {
+export function getSession(): Promise<Session | null> {
   return getServerSession(authOptions);
 }
 
 // Get current userId from session or null if not logged in
 export async function getUserId(): Promise<string | null> {
     const session = await getServerSession(authOptions);
-    return session?.user.id || null;
+    return session?.user.id ?? null;
 }
 
 // Require user to be logged in. Returns userId and session.
@@ -18,7 +18,7 @@ export async function requireUserId() {
     const session = await getSession();
     const userId = session?.user.id;
     if (!userId) {
-        throw new Error("Not authenticated");
+        throw new UnauthorizedError();
     }
     return { userId, session };
 }
@@ -27,10 +27,10 @@ export async function requireUserId() {
 export async function requireAuth(): Promise<{ userId: string; session: Session }> {
     const session = await getSession();
     const userId = session?.user.id;
-    if (!userId) {
+    if (!session?.user?.id) {
         throw new UnauthorizedError();
     }
-    return ({ userId, session });
+    return ({ userId: session.user.id, session });
 }
 
 // Error class for 401 Unauthorized
@@ -41,7 +41,8 @@ export class UnauthorizedError extends Error {
     }
 }
 
-export function toJsonError(e: any) {
+// Convert error to JSON API response
+export function toJsonError(e: unknown) {
     if (e instanceof UnauthorizedError) {
         return NextResponse.json({ ok: false, error: e.message }, { status: 401 });
 }
