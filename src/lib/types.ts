@@ -1,6 +1,10 @@
-export type JobStatus = 'applied' | 'interview' | 'rejected';
+import type { ObjectId } from "mongodb";
+import type { JobStatus } from "./schemas";
+
 export type SortKey = "status" | "company" | "createdAt" | "favorite";
 export type SortDir = "asc" | "desc";
+export type Id = ObjectId;
+export type IdStr = string; // MongoDB ObjectId as string
 
 export interface JobApplication {
   _id: string;            // from MongoDB
@@ -19,7 +23,7 @@ export type Job = {
   company: string;
   location?: string;
   note?: string;
-  status: "applied" | "interview" | "rejected";
+  status: JobStatus;
   createdAt: Date;
   updatedAt: Date;
   favorite: boolean;
@@ -38,3 +42,28 @@ export interface TodoItem {
   userId: string; // ID of the user who created the todo
 }
 
+export interface UserDb {
+  _id: Id;
+  email: string;
+  emailNorm: string; // normalized email (lowercase)
+  username?: string;
+  usernameNorm?: string; // normalized username (lowercase)
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CredentialsDb {
+  _id: Id;
+  userId: Id;
+  kind: "password";
+  passwordHash: string;
+  algo: "argon2id";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type UserDTO = Omit<UserDb, "_id" | "createdAt" | "updatedAt" | "emailNorm" | "usernameNorm"> & { 
+  _id: IdStr; 
+  createdAt: string;
+  updatedAt: string;
+};
