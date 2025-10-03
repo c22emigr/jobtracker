@@ -36,6 +36,8 @@ src/
 public/               # Static assets
 
 Planned features to make the app more useful and better visually:
-- User specific jobs and todos
-- Add a weekly/monthly calendar where todos can be saved
+- User specific jobs and todos with NextAuth (wip)
+- Password hash with argon2 (wip)
+- Components for user creation and login (wip)
+- Add a weekly/monthly calendar where todos can be saved (done)
 - Add small animations for deletion

@@ -3,6 +3,7 @@ import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { z } from "zod";
 import { JobStatusSchema } from '@/lib/schemas';
+import { requireAuth } from '@/lib/auth';
 
 // Helper for consistent data
 function jsonOk<T>(data: T, init?: ResponseInit) {
